@@ -88,7 +88,7 @@ func (c *Profile) Run(ctx ken.Context) (err error) {
 	}
 
 	maxPos := len(guild.Roles)
-	roleColor := static.ColorGray
+	roleColor := static.ColorGrey
 	for _, guildRole := range guild.Roles {
 		if _, ok := membRoleIDs[guildRole.ID]; ok && guildRole.Position < maxPos && guildRole.Color != 0 {
 			maxPos = guildRole.Position
