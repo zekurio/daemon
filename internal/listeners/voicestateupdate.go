@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/sarulabs/di/v2"
 
+	"github.com/zekurio/daemon/internal/models"
 	"github.com/zekurio/daemon/internal/services/database"
 	"github.com/zekurio/daemon/internal/services/database/dberr"
 	"github.com/zekurio/daemon/internal/util/static"
@@ -14,21 +15,16 @@ import (
 	"github.com/zekurio/daemon/pkg/discordutils"
 )
 
-type AVChannel struct {
-	OriginChannel  *discordgo.Channel
-	CreatedChannel *discordgo.Channel
-}
-
 type VoiceStateUpdate struct {
 	db              database.Database
-	avCache         map[string]AVChannel
+	avCache         map[string]models.AVChannel
 	voiceStateCache map[string]*discordgo.VoiceState
 }
 
 func NewVoiceStateUpdate(ctn di.Container) *VoiceStateUpdate {
 	return &VoiceStateUpdate{
 		db:              ctn.Get(static.DiDatabase).(database.Database),
-		avCache:         map[string]AVChannel{},
+		avCache:         map[string]models.AVChannel{},
 		voiceStateCache: map[string]*discordgo.VoiceState{},
 	}
 }
@@ -131,7 +127,7 @@ func (v *VoiceStateUpdate) createAutoVoice(s *discordgo.Session, guildID, userID
 		return err
 	}
 
-	v.avCache[userID] = AVChannel{
+	v.avCache[userID] = models.AVChannel{
 		OriginChannel:  pChannel,
 		CreatedChannel: nChannel,
 	}
