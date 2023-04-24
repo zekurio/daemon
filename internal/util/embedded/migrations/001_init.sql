@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS guilds (
 	PRIMARY KEY (guild_id)
 );
 
-CREATE TABLE IF NOT EXISTS perms (
+CREATE TABLE IF NOT EXISTS permissions (
 	role_id VARCHAR(25) NOT NULL DEFAULT '',
 	guild_id VARCHAR(25) NOT NULL DEFAULT '',
 	perms text NOT NULL DEFAULT '',
@@ -25,5 +25,5 @@ CREATE TABLE IF NOT EXISTS roleselection (
 
 -- +goose Down
 DROP TABLE IF EXISTS guilds;
-DROP TABLE IF EXISTS perms;
+DROP TABLE IF EXISTS permissions;
 DROP TABLE IF EXISTS roleselection;
