@@ -1,0 +1,18 @@
+[Discord]
+Token = ''
+OwnerID = ''
+GuildLimit = -1
+
+[Postgres]
+Host = 'localhost'
+Port = 0
+Database = ''
+Username = ''
+Password = ''
+
+[APIs]
+OpenAIKey = ''
+
+[Permissions]
+UserRules = ['+dm.chat.*', '+dm.etc.*']
+AdminRules = ['+dm.guild.*', '+dm.chat.*', '+dm.etc.*']

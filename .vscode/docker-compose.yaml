@@ -1,0 +1,19 @@
+# compose file for daemon development
+name: daemon-dev
+
+volumes:
+  daemon-pg:
+    name: 'daemon-pg-dev'
+
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+    image: 'postgres:alpine'
+    volumes:
+      - 'daemon-pg:/var/lib/postgresql/data'
+    environment:
+      POSTGRES_PASSWORD: 'daemon'
+      POSTGRES_USER: 'daemon'
+      POSTGRES_DB: 'daemon'
+    restart: 'unless-stopped'
