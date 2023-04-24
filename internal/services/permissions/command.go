@@ -8,7 +8,7 @@ type CommandPerms interface {
 }
 
 type SubCommandPerms struct {
-	Perm        string `json:"perm"`
-	Explicit    bool   `json:"explicit"`
-	Description string `json:"description"`
+	Perm        string
+	Explicit    bool
+	Description string
 }
