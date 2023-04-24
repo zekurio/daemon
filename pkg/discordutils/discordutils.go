@@ -215,3 +215,8 @@ func GetMessage(session *discordgo.Session, channelID, messageID string) (*disco
 	m, err = session.ChannelMessage(channelID, messageID)
 	return m, err
 }
+
+// GetMessageLink returns a message link
+func GetMessageLink(msg *discordgo.Message, guildID string) string {
+	return fmt.Sprintf("https://discord.com/channels/%s/%s/%s", guildID, msg.ChannelID, msg.ID)
+}

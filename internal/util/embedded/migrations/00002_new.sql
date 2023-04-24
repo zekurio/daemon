@@ -2,7 +2,7 @@
 
 CREATE TABLE IF NOT EXISTS votes (
     id SERIAL PRIMARY KEY,
-    data jsonb NOT NULL DEFAULT '{}',
+    json_data JSON NOT NULL,
     PRIMARY KEY (id)
 );
 

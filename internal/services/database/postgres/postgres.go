@@ -14,6 +14,7 @@ import (
 	"github.com/zekurio/daemon/internal/services/database"
 	"github.com/zekurio/daemon/internal/services/database/dberr"
 	"github.com/zekurio/daemon/internal/util/embedded"
+	"github.com/zekurio/daemon/internal/util/vote"
 	"github.com/zekurio/daemon/pkg/perms"
 )
 
@@ -218,6 +219,49 @@ func (p *Postgres) GetRoleSelections() ([]models.RoleSelection, error) {
 
 func (p *Postgres) RemoveRoleSelections(guildID, channelID, messageID string) error {
 	_, err := p.db.Exec(`DELETE FROM roleselection WHERE guild_id = $1 AND channel_id = $2 AND message_id = $3`, guildID, channelID, messageID)
+	return err
+}
+
+// VOTES
+
+func (p *Postgres) GetVotes() (map[string]vote.Vote, error) {
+
+	rows, err := p.db.Query(`SELECT json_data, id FROM votes`)
+	if err != nil {
+		return nil, err
+	}
+
+	var results = make(map[string]vote.Vote)
+	for rows.Next() {
+		var voteID, rawData string
+		err := rows.Scan(&voteID, &rawData)
+		if err != nil {
+			continue
+		}
+		vote, err := vote.Unmarshal(rawData)
+		if err != nil {
+			p.DeleteVote(rawData)
+		} else {
+			results[vote.ID] = vote
+		}
+
+	}
+
+	return results, nil
+
+}
+
+func (p *Postgres) AddUpdateVote(v vote.Vote) error {
+	rawData, err := vote.Marshal(v)
+	if err != nil {
+		return err
+	}
+	_, err = p.db.Exec(`INSERT INTO votes (json_data, id) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET json_data = $1`, rawData, v.ID)
+	return err
+}
+
+func (p *Postgres) DeleteVote(voteID string) error {
+	_, err := p.db.Exec(`DELETE FROM votes WHERE id = $1`, voteID)
 	return err
 }
 
