@@ -28,7 +28,6 @@ var (
 )
 
 func InitPostgres(c models.PostgresConfig) (*Postgres, error) {
-
 	var (
 		p   Postgres
 		err error

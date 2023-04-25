@@ -141,7 +141,6 @@ func (c *Perms) list(ctx ken.SubCommandContext) (err error) {
 }
 
 func (c *Perms) set(ctx ken.SubCommandContext) (err error) {
-
 	db := ctx.Get(static.DiDatabase).(database.Database)
 
 	mode := ctx.Options().GetByName("mode").StringValue()

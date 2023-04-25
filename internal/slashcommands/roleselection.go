@@ -122,7 +122,6 @@ func (c *RoleSelection) new(ctx ken.SubCommandContext) (err error) {
 	}
 
 	roleSelects := mapRoleSelects(ctx.GetEvent().GuildID, fum.ChannelID, fum.ID, roleIDs)
-
 	db := ctx.Get(static.DiDatabase).(database.Database)
 	return db.AddRoleSelections(roleSelects)
 
@@ -152,7 +151,6 @@ func (c *RoleSelection) append(ctx ken.SubCommandContext) (err error) {
 	}
 
 	roleSelects := mapRoleSelects(ctx.GetEvent().GuildID, msg.ChannelID, msg.ID, roleIDs)
-
 	db := ctx.Get(static.DiDatabase).(database.Database)
 	err = db.AddRoleSelections(roleSelects)
 	if err != nil {

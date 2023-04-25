@@ -104,7 +104,6 @@ func (c *Autorole) Run(ctx ken.Context) (err error) {
 }
 
 func (c *Autorole) list(ctx ken.SubCommandContext) (err error) {
-
 	db := ctx.Get(static.DiDatabase).(database.Database)
 
 	autoroles, err := db.GetAutoRoles(ctx.GetEvent().GuildID)
@@ -126,11 +125,9 @@ func (c *Autorole) list(ctx ken.SubCommandContext) (err error) {
 	return ctx.FollowUpEmbed(&discordgo.MessageEmbed{
 		Description: "Currently following roles are set as autoroles:\n" + res.String(),
 	}).Send().Error
-
 }
 
 func (c *Autorole) add(ctx ken.SubCommandContext) (err error) {
-
 	db := ctx.Get(static.DiDatabase).(database.Database)
 
 	role := ctx.Options().Get(0).
@@ -156,11 +153,9 @@ func (c *Autorole) add(ctx ken.SubCommandContext) (err error) {
 	}).Send().Error
 
 	return
-
 }
 
 func (c *Autorole) remove(ctx ken.SubCommandContext) (err error) {
-
 	db := ctx.Get(static.DiDatabase).(database.Database)
 
 	role := ctx.Options().Get(0).
@@ -187,11 +182,9 @@ func (c *Autorole) remove(ctx ken.SubCommandContext) (err error) {
 	}).Send().Error
 
 	return
-
 }
 
 func (c *Autorole) purge(ctx ken.SubCommandContext) (err error) {
-
 	db := ctx.Get(static.DiDatabase).(database.Database)
 
 	if err = db.SetAutoRoles(ctx.GetEvent().GuildID, []string{}); err != nil && err != dberr.ErrNotFound {
@@ -204,5 +197,4 @@ func (c *Autorole) purge(ctx ken.SubCommandContext) (err error) {
 	}).Send().Error
 
 	return
-
 }

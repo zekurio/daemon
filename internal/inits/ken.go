@@ -22,7 +22,7 @@ func InitKen(ctn di.Container) (*ken.Ken, error) {
 	k, err := ken.New(s, ken.Options{
 		EmbedColors: ken.EmbedColors{
 			Default: static.ColorDefault,
-			Error:   static.ColorRed,
+			Error:   static.ColorError,
 		},
 		DependencyProvider: ctn,
 		OnSystemError:      systemErrorHandler,
@@ -42,6 +42,7 @@ func InitKen(ctn di.Container) (*ken.Ken, error) {
 		new(slashcommands.Guild),
 		new(slashcommands.Perms),
 		new(slashcommands.RoleSelection),
+		new(slashcommands.Vote),
 
 		// usercommands
 		new(usercommands.About),

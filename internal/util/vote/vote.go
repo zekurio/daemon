@@ -68,7 +68,6 @@ func Unmarshal(data string) (v Vote, err error) {
 	}
 
 	return
-
 }
 
 // Marshal encodes a vote to a string
@@ -85,7 +84,6 @@ func Marshal(v Vote) (data string, err error) {
 	data = base64.StdEncoding.EncodeToString(buffer.Bytes())
 
 	return
-
 }
 
 // AsEmbed returns a vode as a discordgo.MessageEmbed

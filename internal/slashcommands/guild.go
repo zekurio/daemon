@@ -132,5 +132,4 @@ func (c *Guild) Run(ctx ken.Context) (err error) {
 		Build()
 
 	return ctx.FollowUpEmbed(emb).Send().Error
-
 }

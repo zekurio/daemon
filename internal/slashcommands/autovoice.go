@@ -105,7 +105,6 @@ func (c *Autovoice) Run(ctx ken.Context) (err error) {
 }
 
 func (c *Autovoice) list(ctx ken.SubCommandContext) (err error) {
-
 	db := ctx.Get(static.DiDatabase).(database.Database)
 
 	autovoice, err := db.GetAutoVoice(ctx.GetEvent().GuildID)
@@ -131,7 +130,6 @@ func (c *Autovoice) list(ctx ken.SubCommandContext) (err error) {
 }
 
 func (c *Autovoice) add(ctx ken.SubCommandContext) (err error) {
-
 	db := ctx.Get(static.DiDatabase).(database.Database)
 
 	channel := ctx.Options().Get(0).
@@ -162,7 +160,6 @@ func (c *Autovoice) add(ctx ken.SubCommandContext) (err error) {
 }
 
 func (c *Autovoice) remove(ctx ken.SubCommandContext) (err error) {
-
 	db := ctx.Get(static.DiDatabase).(database.Database)
 
 	channel := ctx.Options().Get(0).
@@ -191,7 +188,6 @@ func (c *Autovoice) remove(ctx ken.SubCommandContext) (err error) {
 }
 
 func (c *Autovoice) purge(ctx ken.SubCommandContext) (err error) {
-
 	db := ctx.Get(static.DiDatabase).(database.Database)
 
 	if err = db.SetAutoVoice(ctx.GetEvent().GuildID, []string{}); err != nil && err != dberr.ErrNotFound {
