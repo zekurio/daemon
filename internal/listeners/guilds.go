@@ -14,19 +14,19 @@ import (
 	"github.com/zekurio/daemon/pkg/discordutils"
 )
 
-type GuildCreate struct {
+type ListenerGuilds struct {
 	cfg models.Config
 	db  database.Database
 }
 
-func NewGuildCreate(ctn di.Container) *GuildCreate {
-	return &GuildCreate{
+func NewListenerGuilds(ctn di.Container) *ListenerGuilds {
+	return &ListenerGuilds{
 		cfg: ctn.Get(static.DiConfig).(models.Config),
 		db:  ctn.Get(static.DiDatabase).(database.Database),
 	}
 }
 
-func (g *GuildCreate) GuildLimit(s *discordgo.Session, e *discordgo.GuildCreate) {
+func (g *ListenerGuilds) GuildLimit(s *discordgo.Session, e *discordgo.GuildCreate) {
 	// check if the joinedAt is older than the time
 	if e.JoinedAt.Unix() <= time.Now().Unix() {
 		return

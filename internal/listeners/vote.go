@@ -21,7 +21,7 @@ func NewListenerVote(container di.Container) *ListenerVote {
 	}
 }
 
-func (l *ListenerVote) Vote(s *discordgo.Session, e *discordgo.MessageReactionAdd) {
+func (l *ListenerVote) Handler(s *discordgo.Session, e *discordgo.MessageReactionAdd) {
 	user, err := discordutils.GetUser(s, e.UserID)
 	if err != nil {
 		return
