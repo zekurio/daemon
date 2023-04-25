@@ -58,7 +58,6 @@ func (c *Profile) SubPerms() []permissions.SubCommandPerms {
 }
 
 func (c *Profile) Run(ctx ken.Context) (err error) {
-
 	if err = ctx.Defer(); err != nil {
 		return
 	}
