@@ -3,15 +3,14 @@ package static
 import "github.com/bwmarrin/discordgo"
 
 const (
-	ColorError   = 0xd32f2f
-	ColorDefault = 0xffc107
-	ColorUpdated = 0x8bc34a
-	ColorGrey    = 0xb0bec5
-	ColorOrange  = 0xfb8c00
-	ColorGreen   = 0x8BC34A
-	ColorCyan    = 0x00BCD4
-	ColorYellow  = 0xFFC107
-	ColorViolet  = 0x6A1B9A
+	ColorRed     = 0xEA8A8A
+	ColorDefault = 0x7091FF
+	ColorGrey    = 0xC2D2D9
+	ColorOrange  = 0xFAC47F
+	ColorGreen   = 0xAED785
+	ColorCyan    = 0x4FDCE7
+	ColorYellow  = 0xFFDC79
+	ColorViolet  = 0x9A7BB7
 
 	OAuthScopes = "bot%20applications.commands"
 

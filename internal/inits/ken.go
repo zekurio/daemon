@@ -23,7 +23,7 @@ func InitKen(ctn di.Container) (*ken.Ken, error) {
 	k, err := ken.New(s, ken.Options{
 		EmbedColors: ken.EmbedColors{
 			Default: static.ColorDefault,
-			Error:   static.ColorError,
+			Error:   static.ColorRed,
 		},
 		DependencyProvider: ctn,
 		OnSystemError:      systemErrorHandler,
