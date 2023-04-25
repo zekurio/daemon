@@ -1,4 +1,3 @@
-// TODO rewrite this piece of crap to use the new auto voice system
 package listeners
 
 import (
@@ -6,32 +5,31 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/sarulabs/di/v2"
-
 	"github.com/zekurio/daemon/internal/services/database"
 	"github.com/zekurio/daemon/internal/util/autovoice"
 	"github.com/zekurio/daemon/internal/util/static"
 )
 
-type VoiceStateUpdate struct {
+type ListenerAutovoice struct {
 	db              database.Database
 	voiceStateCache map[string]*discordgo.VoiceState
 }
 
-func NewVoiceStateUpdate(ctn di.Container) *VoiceStateUpdate {
-	return &VoiceStateUpdate{
+func NewListenerAutovoice(ctn di.Container) *ListenerAutovoice {
+	return &ListenerAutovoice{
 		db:              ctn.Get(static.DiDatabase).(database.Database),
 		voiceStateCache: map[string]*discordgo.VoiceState{},
 	}
 }
 
-func (v *VoiceStateUpdate) AutoVoice(s *discordgo.Session, e *discordgo.VoiceStateUpdate) {
+func (l *ListenerAutovoice) Handler(s *discordgo.Session, e *discordgo.VoiceStateUpdate) {
 
-	oldVState := v.voiceStateCache[e.UserID]
+	oldVState := l.voiceStateCache[e.UserID]
 	newVState := e.VoiceState
 
-	v.voiceStateCache[e.UserID] = newVState
+	l.voiceStateCache[e.UserID] = newVState
 
-	ids, err := v.db.GetAutoVoice(e.GuildID)
+	ids, err := l.db.GetAutoVoice(e.GuildID)
 	if err != nil {
 		return
 	}
@@ -48,7 +46,7 @@ func (v *VoiceStateUpdate) AutoVoice(s *discordgo.Session, e *discordgo.VoiceSta
 			return
 		}
 
-		if err = v.db.AddUpdateAVChannel(av); err != nil {
+		if err = l.db.AddUpdateAVChannel(av); err != nil {
 			return
 		}
 
@@ -65,7 +63,7 @@ func (v *VoiceStateUpdate) AutoVoice(s *discordgo.Session, e *discordgo.VoiceSta
 					return
 				}
 
-				if err = v.db.AddUpdateAVChannel(av); err != nil {
+				if err = l.db.AddUpdateAVChannel(av); err != nil {
 					return
 				}
 			} else {
@@ -80,7 +78,7 @@ func (v *VoiceStateUpdate) AutoVoice(s *discordgo.Session, e *discordgo.VoiceSta
 					return
 				}
 
-				if err = v.db.DeleteAVChannel(avChannel.CreatedChannelID); err != nil {
+				if err = l.db.DeleteAVChannel(avChannel.CreatedChannelID); err != nil {
 					return
 				}
 			}
@@ -92,7 +90,7 @@ func (v *VoiceStateUpdate) AutoVoice(s *discordgo.Session, e *discordgo.VoiceSta
 				return
 			}
 
-			if err = v.db.DeleteAVChannel(avChannel.CreatedChannelID); err != nil {
+			if err = l.db.DeleteAVChannel(avChannel.CreatedChannelID); err != nil {
 				return
 			}
 		}
@@ -103,7 +101,7 @@ func (v *VoiceStateUpdate) AutoVoice(s *discordgo.Session, e *discordgo.VoiceSta
 				return
 			}
 
-			if err = v.db.DeleteAVChannel(avChannel.CreatedChannelID); err != nil {
+			if err = l.db.DeleteAVChannel(avChannel.CreatedChannelID); err != nil {
 				return
 			}
 		}

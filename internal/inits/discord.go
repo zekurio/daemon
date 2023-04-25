@@ -28,9 +28,7 @@ func InitDiscord(ctn di.Container) (*discordgo.Session, error) {
 
 	s.AddHandler(listeners.NewReady().Ready)
 
-	s.AddHandler(listeners.NewGuildCreate(ctn).GuildLimit)
-
-	s.AddHandler(listeners.NewGuildRemove(ctn).FlushGuildData)
+	s.AddHandler(listeners.NewListenerGuilds(ctn).GuildLimit)
 
 	s.AddHandler(listeners.NewGuildMemberAdd(ctn).AutoRole)
 
