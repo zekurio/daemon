@@ -53,7 +53,6 @@ var VoteEmotes = strings.Fields("\u0031\u20E3 \u0032\u20E3 \u0033\u20E3 \u0034\u
 
 // Unmarshal decodes a vote from a string
 func Unmarshal(data string) (v Vote, err error) {
-
 	rawData, err := base64.StdEncoding.DecodeString(data)
 	if err != nil {
 		return
@@ -72,7 +71,6 @@ func Unmarshal(data string) (v Vote, err error) {
 
 // Marshal encodes a vote to a string
 func Marshal(v Vote) (data string, err error) {
-
 	var buffer bytes.Buffer
 	gobenc := gob.NewEncoder(&buffer)
 
@@ -228,7 +226,7 @@ func (v *Vote) AddReactions(s *discordgo.Session) error {
 
 // Tick maps the specificed tick from a user to a vote
 func (v *Vote) Tick(s *discordgo.Session, userID string, tick int) (err error) {
-	if userID, err = hashutils.HashUserID(userID, []byte(v.ID)); err != nil {
+	if userID, err = hashutils.HashSnowflake(userID, []byte(v.ID)); err != nil {
 		return
 	}
 
