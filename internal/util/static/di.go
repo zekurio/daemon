@@ -6,4 +6,5 @@ const (
 	DiDatabase       = "di-database"
 	DiCommandHandler = "di-commandhandler"
 	DiPermissions    = "di-permissions"
+	DiScheduler      = "di-scheduler"
 )
