@@ -85,21 +85,17 @@ func (v *VoiceStateUpdate) AutoVoice(s *discordgo.Session, e *discordgo.VoiceSta
 				}
 			}
 		}
-
 	} else if oldVState != nil && oldVState.ChannelID != "" && newVState.ChannelID == "" {
 		if avChannel, ok := autovoice.Get(e.UserID); ok && avChannel.CreatedChannelID != "" {
-			if avChannel, ok := autovoice.Get(e.UserID); ok && avChannel.CreatedChannelID != "" {
-				err := avChannel.Delete(s)
-				if err != nil {
-					return
-				}
+			err := avChannel.Delete(s)
+			if err != nil {
+				return
+			}
 
-				if err = v.db.DeleteAVChannel(avChannel.CreatedChannelID); err != nil {
-					return
-				}
+			if err = v.db.DeleteAVChannel(avChannel.CreatedChannelID); err != nil {
+				return
 			}
 		}
-		// Add a new else if branch to handle when a user leaves the guild while in a voice channel
 	} else if oldVState != nil && oldVState.ChannelID != "" && newVState.GuildID == "" {
 		if avChannel, ok := autovoice.Get(e.UserID); ok && avChannel.CreatedChannelID != "" {
 			err := avChannel.Delete(s)
