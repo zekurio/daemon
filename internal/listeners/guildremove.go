@@ -20,13 +20,9 @@ func NewGuildRemove(ctn di.Container) *GuildRemove {
 }
 
 func (g *GuildRemove) FlushGuildData(s *discordgo.Session, e *discordgo.GuildDelete) {
-
 	err := g.db.FlushGuildData(e.ID)
 	if err != nil {
 		log.With(err).Error("Failed to flush guild data")
 		return
 	}
-
-	log.Debug("Flushed guild data", "GuildID", e.ID)
-
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/zekurio/daemon/internal/models"
 	"github.com/zekurio/daemon/internal/services/database"
 	"github.com/zekurio/daemon/internal/services/database/dberr"
+	"github.com/zekurio/daemon/internal/util/autovoice"
 	"github.com/zekurio/daemon/internal/util/embedded"
 	"github.com/zekurio/daemon/internal/util/vote"
 	"github.com/zekurio/daemon/pkg/perms"
@@ -100,19 +101,6 @@ func (p *Postgres) SetAutoVoice(guildID string, channelIDs []string) error {
 	return SetValue(p, "guilds", "autovoice_ids", strings.Join(channelIDs, ","), "guild_id", guildID)
 }
 
-func (p *Postgres) GetCreatedAV(guildID string) ([]string, error) {
-	chStr, err := GetValue[string](p, "guilds", "created_av_ids", "guild_id", guildID)
-	if chStr == "" {
-		return []string{}, err
-	}
-
-	return strings.Split(chStr, ","), nil
-}
-
-func (p *Postgres) SetCreatedAV(guildID string, channelIDs []string) error {
-	return SetValue(p, "guilds", "created_av_ids", strings.Join(channelIDs, ","), "guild_id", guildID)
-}
-
 // PERMISSIONS
 
 func (p *Postgres) GetPermissions(guildID string) (map[string]perms.PermsArray, error) {
@@ -195,7 +183,7 @@ func (p *Postgres) GetRoleSelections() ([]models.RoleSelection, error) {
 
 	rows, err := p.db.Query(`SELECT guild_id, channel_id, message_id, role_id FROM roleselection`)
 	if err != nil {
-		return nil, err
+		return nil, p.wrapErr(err)
 	}
 
 	var results []models.RoleSelection
@@ -225,9 +213,9 @@ func (p *Postgres) RemoveRoleSelections(guildID, channelID, messageID string) er
 
 func (p *Postgres) GetVotes() (map[string]vote.Vote, error) {
 
-	rows, err := p.db.Query(`SELECT json_data, id FROM votes`)
+	rows, err := p.db.Query(`SELECT id, json_data FROM votes`)
 	if err != nil {
-		return nil, err
+		return nil, p.wrapErr(err)
 	}
 
 	var results = make(map[string]vote.Vote)
@@ -255,12 +243,55 @@ func (p *Postgres) AddUpdateVote(v vote.Vote) error {
 	if err != nil {
 		return err
 	}
-	_, err = p.db.Exec(`INSERT INTO votes (json_data, id) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET json_data = $1`, rawData, v.ID)
+	_, err = p.db.Exec(`INSERT INTO votes (id, json_data VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET json_data = $2`, v.ID, rawData)
 	return err
 }
 
 func (p *Postgres) DeleteVote(voteID string) error {
 	_, err := p.db.Exec(`DELETE FROM votes WHERE id = $1`, voteID)
+	return err
+}
+
+// AUTOVOICE
+
+func (p *Postgres) GetAVChannels() (map[string]autovoice.AVChannel, error) {
+
+	rows, err := p.db.Query(`SELECT id, json_data FROM autovoice`)
+	if err != nil {
+		return nil, p.wrapErr(err)
+	}
+
+	var results = make(map[string]autovoice.AVChannel)
+	for rows.Next() {
+		var avID, rawData string
+		err := rows.Scan(&avID, &rawData)
+		if err != nil {
+			continue
+		}
+		av, err := autovoice.Unmarshal(rawData)
+		if err != nil {
+			p.DeleteAVChannel(rawData)
+		} else {
+			results[av.CreatedChannelID] = av
+		}
+
+	}
+
+	return results, nil
+
+}
+
+func (p *Postgres) AddUpdateAVChannel(av autovoice.AVChannel) error {
+	rawData, err := autovoice.Marshal(av)
+	if err != nil {
+		return err
+	}
+	_, err = p.db.Exec(`INSERT INTO autovoice (id, json_data VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET json_data = $2`, av.CreatedChannelID, rawData)
+	return err
+}
+
+func (p *Postgres) DeleteAVChannel(channelID string) error {
+	_, err := p.db.Exec(`DELETE FROM autovoice WHERE id = $1`, channelID)
 	return err
 }
 

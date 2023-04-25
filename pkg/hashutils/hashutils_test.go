@@ -12,14 +12,14 @@ const (
 	uid3 = "852813245815324672"
 )
 
-func TestHashUserID(t *testing.T) {
+func TestSnowflake(t *testing.T) {
 	{
 		salt := []byte("pepper")
 
-		hash1, err := HashUserID(uid1, salt)
+		hash1, err := HashSnowflake(uid1, salt)
 		assert.Nil(t, err)
 
-		hash2, err := HashUserID(uid1, salt)
+		hash2, err := HashSnowflake(uid1, salt)
 		assert.Nil(t, err)
 
 		assert.Equal(t, hash1, hash2)
@@ -28,10 +28,10 @@ func TestHashUserID(t *testing.T) {
 	{
 		salt := []byte("salt")
 
-		hash1, err := HashUserID(uid1, salt)
+		hash1, err := HashSnowflake(uid1, salt)
 		assert.Nil(t, err)
 
-		hash2, err := HashUserID(uid2, salt)
+		hash2, err := HashSnowflake(uid2, salt)
 		assert.Nil(t, err)
 
 		assert.NotEqual(t, hash1, hash2)
@@ -41,10 +41,10 @@ func TestHashUserID(t *testing.T) {
 		salt1 := []byte("pepperv2")
 		salt2 := []byte("saltv2")
 
-		hash1, err := HashUserID(uid1, salt1)
+		hash1, err := HashSnowflake(uid1, salt1)
 		assert.Nil(t, err)
 
-		hash2, err := HashUserID(uid1, salt2)
+		hash2, err := HashSnowflake(uid1, salt2)
 		assert.Nil(t, err)
 
 		assert.NotEqual(t, hash1, hash2)

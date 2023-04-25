@@ -8,9 +8,9 @@ import (
 	"github.com/bwmarrin/snowflake"
 )
 
-// HashUserID takes a userID as well as a salt value and returns a hash
-func HashUserID(userID string, salt []byte) (hash string, err error) {
-	sid, err := snowflake.ParseString(userID)
+// HashSnowflake takes a snowflake as well as a salt value and returns a hash
+func HashSnowflake(s string, salt []byte) (hash string, err error) {
+	sid, err := snowflake.ParseString(s)
 	if err != nil {
 		return
 	}
