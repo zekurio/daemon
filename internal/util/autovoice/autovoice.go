@@ -121,7 +121,7 @@ func (a *AVChannel) Delete(s *discordgo.Session) (err error) {
 		return
 	}
 
-	delete(ActiveChannels, a.CreatedChannelID)
+	delete(ActiveChannels, a.OwnerID)
 
 	return
 }
@@ -145,15 +145,21 @@ func (a *AVChannel) SwitchOwner(s *discordgo.Session, members []*discordgo.Membe
 		chName = newOwner.Nick + "'s " + pCh.Name
 	}
 
-	_, err = s.ChannelEdit(pCh.ID, &discordgo.ChannelEdit{
+	_, err = s.ChannelEdit(a.CreatedChannelID, &discordgo.ChannelEdit{
 		Name:     chName,
 		ParentID: pCh.ParentID,
 		Position: pCh.Position + 1,
 	})
-
 	if err != nil {
 		return
 	}
+
+	// delete old owner from map
+	delete(ActiveChannels, a.OwnerID)
+
+	// add new owner to map
+	a.OwnerID = newOwner.User.ID
+	ActiveChannels[a.OwnerID] = *a
 
 	return
 }
