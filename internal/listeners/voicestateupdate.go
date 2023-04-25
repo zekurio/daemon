@@ -39,13 +39,12 @@ func (v *VoiceStateUpdate) AutoVoice(s *discordgo.Session, e *discordgo.VoiceSta
 
 	if oldVState == nil || (oldVState != nil && oldVState.ChannelID == "") {
 
-		var av autovoice.AVChannel
-
 		if !strings.Contains(idString, newVState.ChannelID) {
 			return
 		}
 
-		if av, err = autovoice.Create(s, e.GuildID, e.UserID, newVState.ChannelID); err != nil {
+		av, err := autovoice.Create(s, e.GuildID, e.UserID, newVState.ChannelID)
+		if err != nil {
 			return
 		}
 
@@ -61,7 +60,12 @@ func (v *VoiceStateUpdate) AutoVoice(s *discordgo.Session, e *discordgo.VoiceSta
 
 		} else if strings.Contains(idString, newVState.ChannelID) && (!ok || avChannel.CreatedChannelID == "") {
 			if !ok || avChannel.CreatedChannelID == "" {
-				if _, err := autovoice.Create(s, e.GuildID, e.UserID, newVState.ChannelID); err != nil {
+				av, err := autovoice.Create(s, e.GuildID, e.UserID, newVState.ChannelID)
+				if err != nil {
+					return
+				}
+
+				if err = v.db.AddUpdateAVChannel(av); err != nil {
 					return
 				}
 			} else {
@@ -70,21 +74,40 @@ func (v *VoiceStateUpdate) AutoVoice(s *discordgo.Session, e *discordgo.VoiceSta
 				}
 			}
 		} else if ok && avChannel.CreatedChannelID != "" {
-			if err := avChannel.Delete(s); err != nil {
-				return
+			if avChannel, ok := autovoice.Get(e.UserID); ok && avChannel.CreatedChannelID != "" {
+				err := avChannel.Delete(s)
+				if err != nil {
+					return
+				}
+
+				if err = v.db.DeleteAVChannel(avChannel.CreatedChannelID); err != nil {
+					return
+				}
 			}
 		}
 
 	} else if oldVState != nil && oldVState.ChannelID != "" && newVState.ChannelID == "" {
 		if avChannel, ok := autovoice.Get(e.UserID); ok && avChannel.CreatedChannelID != "" {
-			if err := avChannel.Delete(s); err != nil {
-				return
+			if avChannel, ok := autovoice.Get(e.UserID); ok && avChannel.CreatedChannelID != "" {
+				err := avChannel.Delete(s)
+				if err != nil {
+					return
+				}
+
+				if err = v.db.DeleteAVChannel(avChannel.CreatedChannelID); err != nil {
+					return
+				}
 			}
 		}
 		// Add a new else if branch to handle when a user leaves the guild while in a voice channel
 	} else if oldVState != nil && oldVState.ChannelID != "" && newVState.GuildID == "" {
 		if avChannel, ok := autovoice.Get(e.UserID); ok && avChannel.CreatedChannelID != "" {
-			if err := avChannel.Delete(s); err != nil {
+			err := avChannel.Delete(s)
+			if err != nil {
+				return
+			}
+
+			if err = v.db.DeleteAVChannel(avChannel.CreatedChannelID); err != nil {
 				return
 			}
 		}

@@ -205,7 +205,7 @@ func (v *Vote) AsField() *discordgo.MessageEmbedField {
 
 	return &discordgo.MessageEmbedField{
 		Name: "VID: " + v.ID,
-		Value: fmt.Sprintf("**Description:** %s\n**Expires:** %s\n`%d votes`\n[*jump to msg*](%s)",
+		Value: fmt.Sprintf("**Description:** %s\n**Expires:** %s\n`%d votes`\n[*Jump to message*](%s)",
 			shortenedDescription, expiresTxt, len(v.Ticks), discordutils.GetMessageLink(&discordgo.Message{
 				ID:        v.MsgID,
 				ChannelID: v.ChannelID,

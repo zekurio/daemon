@@ -243,7 +243,7 @@ func (p *Postgres) AddUpdateVote(v vote.Vote) error {
 	if err != nil {
 		return err
 	}
-	_, err = p.db.Exec(`INSERT INTO votes (id, json_data VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET json_data = $2`, v.ID, rawData)
+	_, err = p.db.Exec(`INSERT INTO votes (id, json_data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET json_data = $2`, v.ID, rawData)
 	return err
 }
 
@@ -286,7 +286,7 @@ func (p *Postgres) AddUpdateAVChannel(av autovoice.AVChannel) error {
 	if err != nil {
 		return err
 	}
-	_, err = p.db.Exec(`INSERT INTO autovoice (id, json_data VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET json_data = $2`, av.CreatedChannelID, rawData)
+	_, err = p.db.Exec(`INSERT INTO autovoice (id, json_data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET json_data = $2`, av.CreatedChannelID, rawData)
 	return err
 }
 

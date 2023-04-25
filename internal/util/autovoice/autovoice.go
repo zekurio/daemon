@@ -62,12 +62,26 @@ func Create(s *discordgo.Session, gID, oID, cID string) (a AVChannel, err error)
 		return
 	}
 
-	chName = pCh.Name
+	member, err := discordutils.GetMember(s, gID, oID)
+	if err != nil {
+		return
+	}
+
+	if member.Nick == "" {
+		chName = member.User.Username + "'s " + pCh.Name
+	} else {
+		chName = member.Nick + "'s " + pCh.Name
+	}
 
 	createdCh, err := s.GuildChannelCreate(gID, chName, discordgo.ChannelTypeGuildVoice)
 	if err != nil {
 		return
 	}
+
+	_, err = s.ChannelEdit(createdCh.ID, &discordgo.ChannelEdit{
+		ParentID: pCh.ParentID,
+		Position: pCh.Position + 1,
+	})
 
 	a = AVChannel{
 		GuildID:          gID,
@@ -115,27 +129,26 @@ func (a *AVChannel) Delete(s *discordgo.Session) (err error) {
 // SwitchOwner switches the owner of a autovoice channel to the next member in the list,
 // in case Delete was called while the channel was not empty
 func (a *AVChannel) SwitchOwner(s *discordgo.Session, members []*discordgo.Member) (err error) {
-
 	var (
 		newOwner = members[0]
 		chName   string
 	)
 
-	pChannel, err := discordutils.GetChannel(s, a.OriginChannelID)
+	pCh, err := discordutils.GetChannel(s, a.OriginChannelID)
 	if err != nil {
 		return
 	}
 
 	if newOwner.Nick == "" {
-		chName = newOwner.User.Username + "'s " + pChannel.Name
+		chName = newOwner.User.Username + "'s " + pCh.Name
 	} else {
-		chName = newOwner.Nick + "'s " + pChannel.Name
+		chName = newOwner.Nick + "'s " + pCh.Name
 	}
 
-	_, err = s.ChannelEdit(a.CreatedChannelID, &discordgo.ChannelEdit{
+	_, err = s.ChannelEdit(pCh.ID, &discordgo.ChannelEdit{
 		Name:     chName,
-		ParentID: pChannel.ID,
-		Position: pChannel.Position + 1,
+		ParentID: pCh.ParentID,
+		Position: pCh.Position + 1,
 	})
 
 	if err != nil {
@@ -143,5 +156,4 @@ func (a *AVChannel) SwitchOwner(s *discordgo.Session, members []*discordgo.Membe
 	}
 
 	return
-
 }
