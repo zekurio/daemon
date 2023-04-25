@@ -1,7 +1,7 @@
 -- +goose Up
 
 CREATE TABLE IF NOT EXISTS votes (
-    id SERIAL PRIMARY KEY,
+    id SERIAL,
     json_data JSON NOT NULL,
     PRIMARY KEY (id)
 );
