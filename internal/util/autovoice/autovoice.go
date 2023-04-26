@@ -90,7 +90,7 @@ func Create(s *discordgo.Session, gID, oID, cID string) (a AVChannel, err error)
 		CreatedChannelID: createdCh.ID,
 	}
 
-	ActiveChannels[oID] = a
+	ActiveChannels[createdCh.ID] = a
 
 	if err := s.GuildMemberMove(gID, oID, &createdCh.ID); err != nil {
 		return a, err
@@ -99,9 +99,19 @@ func Create(s *discordgo.Session, gID, oID, cID string) (a AVChannel, err error)
 	return
 }
 
-// Get gets an autovoice channel from the map by the owner ID
-func Get(oID string) (a AVChannel, ok bool) {
-	a, ok = ActiveChannels[oID]
+// GetByOwnerID gets an autovoice channel from the map by the owner ID
+func GetByOwnerID(oID string) (a AVChannel, ok bool) {
+	for _, a := range ActiveChannels {
+		if a.OwnerID == oID {
+			return a, true
+		}
+	}
+	return
+}
+
+// Get gets an autovoice channel from the map by the created channel ID
+func Get(cID string) (a AVChannel, ok bool) {
+	a, ok = ActiveChannels[cID]
 	return
 }
 
