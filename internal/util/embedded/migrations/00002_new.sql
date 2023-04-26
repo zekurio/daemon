@@ -2,13 +2,13 @@
 
 CREATE TABLE IF NOT EXISTS votes (
     id VARCHAR(25) NOT NULL DEFAULT '',
-    json_data JSON NOT NULL,
+    json_data TEXT NOT NULL,
     PRIMARY KEY (id)
 );
 
 CREATE TABLE IF NOT EXISTS autovoice (
     id VARCHAR(25) NOT NULL DEFAULT '',
-    json_data JSON NOT NULL,
+    json_data TEXT NOT NULL,
     PRIMARY KEY (id)
 );
 

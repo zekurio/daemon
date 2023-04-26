@@ -26,7 +26,7 @@ func NewListenerGuilds(ctn di.Container) *ListenerGuilds {
 	}
 }
 
-func (g *ListenerGuilds) GuildLimit(s *discordgo.Session, e *discordgo.GuildCreate) {
+func (g *ListenerGuilds) Handler(s *discordgo.Session, e *discordgo.GuildCreate) {
 	// check if the joinedAt is older than the time
 	if e.JoinedAt.Unix() <= time.Now().Unix() {
 		return

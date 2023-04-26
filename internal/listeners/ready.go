@@ -9,6 +9,7 @@ import (
 
 	"github.com/zekurio/daemon/internal/services/database"
 	"github.com/zekurio/daemon/internal/services/scheduler"
+	"github.com/zekurio/daemon/internal/util/autovoice"
 	"github.com/zekurio/daemon/internal/util/vote"
 	"github.com/zekurio/daemon/pkg/discordutils"
 )
@@ -18,11 +19,11 @@ type ListenerReady struct {
 	sched scheduler.Provider
 }
 
-func NewReady() *ListenerReady {
+func NewListenerReady() *ListenerReady {
 	return &ListenerReady{}
 }
 
-func (l *ListenerReady) Ready(s *discordgo.Session, e *discordgo.Ready) {
+func (l *ListenerReady) Handler(s *discordgo.Session, e *discordgo.Ready) {
 	err := s.UpdateListeningStatus("slash commands [WIP]")
 	if err != nil {
 		return
@@ -47,6 +48,26 @@ func (l *ListenerReady) Ready(s *discordgo.Session, e *discordgo.Ready) {
 		})
 		if err != nil {
 			log.Error("Failed scheduling vote cleanup: %s", err.Error())
+		}
+	}
+
+	autovoices, err := l.db.GetAVChannels()
+	if err != nil {
+	} else {
+		autovoice.ActiveChannels = autovoices
+		for _, av := range autovoice.ActiveChannels {
+			members, err := discordutils.GetVoiceMembers(s, av.GuildID, av.CreatedChannelID)
+			if err != nil || len(members) == 0 {
+				if err = l.db.DeleteAVChannel(av.CreatedChannelID); err != nil {
+					log.Error("Failed deleting AV channel from database: %s", err.Error())
+				}
+
+				if _, err = s.ChannelDelete(av.CreatedChannelID); err != nil {
+					log.Error("Failed deleting AV channel: %s", err.Error())
+				}
+			} else {
+				continue
+			}
 		}
 	}
 
