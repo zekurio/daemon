@@ -1,26 +1,20 @@
 [VERSION]
 
-> first release of daemon 🎉
-
 # What's new
 
 ## Features
 
-- Autorole: Assign a role to a user when they join the server
+- Autovoice now also works after a restart
 
-- Autovoice: Create voice channel automatically when a user joins a specific voice channel
+- VOTES ARE HERE!
 
-- Profile: Show user profile, this will be expanded in the future
-
-- Guild: Show guild information
-
-- Perms: Fully featured permission system that allows for granular control over commands
-
-- Rolesection: Create a message that allows users to assign themselves roles
+- Commands can now be disabled in the config
 
 ## Bug fixes
 
-There are no bug fixes in this release. Everything is fresh and new.
+- Fixed a bug where moving across guilds would cause auto voice to stop working for the user entirely
+
+- 
 
 # Docker
 
@@ -30,12 +24,12 @@ Pull the docker image of this release:
 
 From DockerHub:
 
-```
-$ docker pull zekurio/daemon:[VERSION]
+```bash
+docker pull zekurio/daemon:[VERSION]
 ```
 
 From GHCR:
 
-```
-$ docker pull ghcr.io/zekurio/daemon:[VERSION]
+```bash
+docker pull ghcr.io/zekurio/daemon:[VERSION]
 ```
