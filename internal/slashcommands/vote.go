@@ -52,8 +52,8 @@ func (c *Vote) Options() []*discordgo.ApplicationCommandOption {
 				},
 				{
 					Type:        discordgo.ApplicationCommandOptionString,
-					Name:        "choises",
-					Description: "The choises - split by `,`.",
+					Name:        "choices",
+					Description: "The choices - split by `,`.",
 					Required:    true,
 				},
 				{
@@ -146,8 +146,8 @@ func (c *Vote) create(ctx ken.SubCommandContext) (err error) {
 	db := ctx.Get(static.DiDatabase).(database.Database)
 
 	body := ctx.Options().GetByName("body").StringValue()
-	choises := ctx.Options().GetByName("choises").StringValue()
-	split := strings.Split(choises, ",")
+	choices := ctx.Options().GetByName("choices").StringValue()
+	split := strings.Split(choices, ",")
 	if len(split) < 2 || len(split) > 10 {
 		return ctx.FollowUpError(
 			"Invalid arguments. Please use `help vote` go get help about how to use this command.", "").
@@ -262,7 +262,7 @@ func (c *Vote) expire(ctx ken.SubCommandContext) (err error) {
 	}
 
 	return ctx.FollowUpEmbed(&discordgo.MessageEmbed{
-		Description: fmt.Sprintf("Vote will expire at %s.", ivote.Expires.Format("01/02 15:04 MST")),
+		Description: fmt.Sprintf("Vote will expire <t:%d:R>", ivote.Expires.Unix()),
 	}).Send().Error
 }
 

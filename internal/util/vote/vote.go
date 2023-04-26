@@ -97,14 +97,21 @@ func (v *Vote) AsEmbed(s *discordgo.Session, voteState ...VoteState) (*discordgo
 	}
 	title := "Open Vote"
 	color := static.ColorDefault
+	expires := fmt.Sprintf("Expires <t:%d:R>", v.Expires.Unix())
+
+	if (v.Expires == time.Time{}) {
+		expires = "Never expires"
+	}
 
 	switch state {
 	case VoteStateClosed, VoteStateClosedNC:
 		title = "Vote closed"
 		color = static.ColorOrange
+		expires = "Closed"
 	case VoteStateExpired:
 		title = "Vote expired"
 		color = static.ColorViolet
+		expires = fmt.Sprintf("Expired <t:%d:R>", v.Expires.Unix())
 	}
 
 	totalTicks := make(map[int]int)
@@ -121,11 +128,6 @@ func (v *Vote) AsEmbed(s *discordgo.Session, voteState ...VoteState) (*discordgo
 		description += fmt.Sprintf("%s    %s  -  `%d`\n", VoteEmotes[i], p, totalTicks[i])
 	}
 
-	footerText := fmt.Sprintf("ID: %s", v.ID)
-	if (v.Expires != time.Time{} && state == VoteStateOpen) {
-		footerText = fmt.Sprintf("%s | Expires: %s", footerText, v.Expires.Format("01/02 15:04 MST"))
-	}
-
 	emb := &discordgo.MessageEmbed{
 		Color:       color,
 		Title:       title,
@@ -134,8 +136,17 @@ func (v *Vote) AsEmbed(s *discordgo.Session, voteState ...VoteState) (*discordgo
 			IconURL: creator.AvatarURL("16x16"),
 			Name:    creator.Username + "#" + creator.Discriminator,
 		},
-		Footer: &discordgo.MessageEmbedFooter{
-			Text: footerText,
+		Fields: []*discordgo.MessageEmbedField{
+			{
+				Name:   expires,
+				Value:  "",
+				Inline: false,
+			},
+			{
+				Name:   fmt.Sprintf("ID `%s`", v.ID),
+				Value:  "",
+				Inline: false,
+			},
 		},
 	}
 
@@ -200,12 +211,12 @@ func (v *Vote) AsField() *discordgo.MessageEmbedField {
 
 	expiresTxt := "never"
 	if (v.Expires != time.Time{}) {
-		expiresTxt = v.Expires.Format("01/02 15:04 MST")
+		expiresTxt = fmt.Sprintf("**Expires <t:%d:R>**", v.Expires.Unix())
 	}
 
 	return &discordgo.MessageEmbedField{
-		Name: "VID: " + v.ID,
-		Value: fmt.Sprintf("**Description:** %s\n**Expires:** %s\n`%d votes`\n[*Jump to message*](%s)",
+		Name: fmt.Sprintf("ID `%s`", v.ID),
+		Value: fmt.Sprintf("**Description:** %s\n%s\n`%d votes`\n[*Jump to message*](%s)",
 			shortenedDescription, expiresTxt, len(v.Ticks), discordutils.GetMessageLink(&discordgo.Message{
 				ID:        v.MsgID,
 				ChannelID: v.ChannelID,
