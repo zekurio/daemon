@@ -20,3 +20,7 @@ config/docker-compose.yml
 
 # binaries
 bin/
+
+# idesettings
+.idea/
+.vscode/

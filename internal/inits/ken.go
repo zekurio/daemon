@@ -42,7 +42,6 @@ func InitKen(ctn di.Container) (*ken.Ken, error) {
 		new(slashcommands.Autovoice),
 		new(slashcommands.Guild),
 		new(slashcommands.Perms),
-		new(slashcommands.RoleSelection),
 		new(slashcommands.Vote),
 
 		// usercommands
