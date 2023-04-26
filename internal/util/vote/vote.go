@@ -229,7 +229,90 @@ func (v *Vote) AsField() *discordgo.MessageEmbedField {
 }
 
 // AddButtons adds the buttons to the vote
-func (v *Vote) AddButtons(cb *ken.ComponentBuilder) {}
+func (v *Vote) AddButtons(cb *ken.ComponentBuilder) {
+	buttons := make([]Button, len(v.Possibilities))
+	for i, p := range v.Possibilities {
+		customID := fmt.Sprintf("vote_%s_option_%d", v.ID, i)
+		button := Button{
+			Button: &discordgo.Button{
+				Label:    p,
+				Style:    discordgo.PrimaryButton,
+				CustomID: customID,
+			},
+			Possibility: p,
+		}
+		buttons[i] = button
+	}
+
+	numRows := len(buttons) / 5
+	if len(buttons)%5 > 0 {
+		numRows++
+	}
+
+	buttonRows := make([][]Button, numRows)
+	for i := range buttonRows {
+		start := i * 5
+		end := start + 5
+		if end > len(buttons) {
+			end = len(buttons)
+		}
+		buttonRows[i] = buttons[start:end]
+	}
+
+	for _, row := range buttonRows {
+		cb.AddActionsRow(func(b ken.ComponentAssembler) {
+			for _, btn := range row {
+				b.Add(btn.Button, OnButtonPress(btn.Button.CustomID, v))
+			}
+		})
+	}
+}
+
+func OnButtonPress(customID string, v *Vote) func(ctx ken.ComponentContext) bool {
+	return func(ctx ken.ComponentContext) bool {
+		ctx.SetEphemeral(true)
+		err := ctx.Defer()
+		if err != nil {
+			return false
+		}
+
+		userID := ctx.User().ID
+
+		// Check if the user has already voted
+		changedVote := false
+		for _, buttonPress := range v.ButtonPresses {
+			if buttonPress.UserID == userID {
+				// Update the user's vote
+				buttonPress.ButtonID = customID
+				changedVote = true
+				break
+			}
+		}
+
+		// If the user has not voted yet, add their vote
+		if !changedVote {
+			v.ButtonPresses[customID] = &ButtonPress{
+				UserID:   userID,
+				ButtonID: customID,
+			}
+		}
+
+		// Update the embed message with the new vote count
+		s := ctx.GetSession()
+		emb, err := v.AsEmbed(s)
+		if err != nil {
+			err = ctx.FollowUpError("Failed to update the vote count.", "").Send().DeleteAfter(10 * time.Second).Error
+			return err == nil
+		}
+		_, err = s.ChannelMessageEditEmbed(v.ChannelID, v.MsgID, emb)
+		if err != nil {
+			err = ctx.FollowUpError("Failed to update the vote count.", "").Send().DeleteAfter(10 * time.Second).Error
+			return err == nil
+		}
+
+		return true
+	}
+}
 
 // SetExpire sets the expiration time of the vote and updates the message
 func (v *Vote) SetExpire(s *discordgo.Session, d time.Duration) error {
