@@ -229,7 +229,7 @@ func (v *Vote) AsField() *discordgo.MessageEmbedField {
 }
 
 // AddButtons adds the buttons to the vote
-func (v *Vote) AddButtons(cb *ken.ComponentBuilder) {
+func (v *Vote) AddButtons(cb *ken.ComponentBuilder) (err error) {
 	buttons := make([]Button, len(v.Possibilities))
 	for i, p := range v.Possibilities {
 		customID := fmt.Sprintf("vote_%s_option_%d", v.ID, i)
@@ -266,6 +266,11 @@ func (v *Vote) AddButtons(cb *ken.ComponentBuilder) {
 			}
 		})
 	}
+
+	_, err = cb.Build()
+
+	return err
+
 }
 
 func OnButtonPress(customID string, v *Vote) func(ctx ken.ComponentContext) bool {

@@ -207,7 +207,7 @@ func (c *Vote) create(ctx ken.SubCommandContext) (err error) {
 	b := fum.AddComponents()
 
 	ivote.MsgID = msg.ID
-	ivote.AddButtons(b)
+	err = ivote.AddButtons(b)
 	if err != nil {
 		return err
 	}
@@ -258,7 +258,9 @@ func (c *Vote) expire(ctx ken.SubCommandContext) (err error) {
 		}
 	}
 
-	ivote.SetExpire(ctx.GetSession(), expireDuration)
+	if err = ivote.SetExpire(ctx.GetSession(), expireDuration); err != nil {
+		return err
+	}
 	if err = db.AddUpdateVote(*ivote); err != nil {
 		return err
 	}
