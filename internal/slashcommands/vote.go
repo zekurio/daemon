@@ -11,7 +11,6 @@ import (
 	"github.com/zekurio/daemon/internal/services/permissions"
 	"github.com/zekurio/daemon/internal/util/static"
 	"github.com/zekurio/daemon/internal/util/vote"
-	"github.com/zekurio/daemon/pkg/discordutils"
 	"github.com/zekurio/daemon/pkg/timeutils"
 )
 
@@ -61,12 +60,6 @@ func (c *Vote) Options() []*discordgo.ApplicationCommandOption {
 					Type:        discordgo.ApplicationCommandOptionString,
 					Name:        "imageurl",
 					Description: "An optional image URL.",
-				},
-				{
-					Type:         discordgo.ApplicationCommandOptionChannel,
-					Name:         "channel",
-					Description:  "The channel to create the vote in (defaultly the current channel).",
-					ChannelTypes: []discordgo.ChannelType{discordgo.ChannelTypeGuildText},
 				},
 				{
 					Type:        discordgo.ApplicationCommandOptionString,
@@ -204,30 +197,12 @@ func (c *Vote) create(ctx ken.SubCommandContext) (err error) {
 		return err
 	}
 
-	chV, ok := ctx.Options().GetByNameOptional("channel")
-
-	var msg *discordgo.Message
-	if ok {
-		ch := chV.ChannelValue(ctx)
-		msg, err = ctx.GetSession().ChannelMessageSendEmbed(ch.ID, emb)
-		if err != nil {
-			return
-		}
-		msgLink := discordutils.GetMessageLink(msg, ctx.GetEvent().GuildID)
-		err = ctx.FollowUpEmbed(&discordgo.MessageEmbed{
-			Description: fmt.Sprintf("[Vote](%s) created in channel <#%s>.", msgLink, ch.ID),
-		}).Send().Error
-		if err != nil {
-			return
-		}
-	} else {
-		fum := ctx.FollowUpEmbed(emb).Send()
-		err = fum.Error
-		if err != nil {
-			return
-		}
-		msg = fum.Message
+	fum := ctx.FollowUpEmbed(emb).Send()
+	err = fum.Error
+	if err != nil {
+		return
 	}
+	var msg = fum.Message
 
 	ivote.MsgID = msg.ID
 	err = ivote.AddReactions(ctx.GetSession())
