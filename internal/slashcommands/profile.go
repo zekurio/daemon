@@ -45,7 +45,6 @@ func (c *Profile) Options() []*discordgo.ApplicationCommandOption {
 			Type:        discordgo.ApplicationCommandOptionUser,
 			Name:        "user",
 			Description: "The user to be displayed.",
-			Required:    true,
 		},
 	}
 }
@@ -59,7 +58,6 @@ func (c *Profile) SubPerms() []permissions.SubCommandPerms {
 }
 
 func (c *Profile) Run(ctx ken.Context) (err error) {
-
 	if err = ctx.Defer(); err != nil {
 		return
 	}
@@ -67,19 +65,13 @@ func (c *Profile) Run(ctx ken.Context) (err error) {
 	s := ctx.Get(static.DiDiscord).(*discordgo.Session)
 	p := ctx.Get(static.DiPermissions).(*permissions.Permissions)
 
-	var user *discordgo.User
-
-	if resolved := ctx.GetEvent().ApplicationCommandData().Resolved; resolved != nil {
-		for _, user = range ctx.GetEvent().ApplicationCommandData().Resolved.Users {
-			break
-		}
+	userID := ctx.GetEvent().Member.User.ID
+	if userV, ok := ctx.Options().GetByNameOptional("user"); ok {
+		user := userV.UserValue(ctx)
+		userID = user.ID
 	}
 
-	if user == nil {
-		user = ctx.Options().GetByName("user").UserValue(ctx)
-	}
-
-	member, err := discordutils.GetMember(s, ctx.GetEvent().GuildID, user.ID)
+	member, err := discordutils.GetMember(s, ctx.GetEvent().GuildID, userID)
 	if err != nil {
 		return
 	}
@@ -95,7 +87,7 @@ func (c *Profile) Run(ctx ken.Context) (err error) {
 	}
 
 	maxPos := len(guild.Roles)
-	roleColor := static.ColorGray
+	roleColor := static.ColorGrey
 	for _, guildRole := range guild.Roles {
 		if _, ok := membRoleIDs[guildRole.ID]; ok && guildRole.Position < maxPos && guildRole.Color != 0 {
 			maxPos = guildRole.Position
@@ -108,7 +100,7 @@ func (c *Profile) Run(ctx ken.Context) (err error) {
 		return
 	}
 
-	permissions, err := p.GetPerms(s, ctx.GetEvent().GuildID, member.User.ID)
+	permissions, _, err := p.GetPerms(s, ctx.GetEvent().GuildID, member.User.ID)
 	if err != nil {
 		return
 	}
@@ -119,7 +111,7 @@ func (c *Profile) Run(ctx ken.Context) (err error) {
 	}
 
 	emb := quickembed.New().
-		SetTitle("Profile of "+user.Username).
+		SetTitle("Profile of "+member.User.Username).
 		SetThumbnail(member.User.AvatarURL("256"), "", 100, 100).
 		SetColor(roleColor).
 		AddField("Nickname", member.Nick).

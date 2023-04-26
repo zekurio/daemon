@@ -15,7 +15,6 @@ func InitPostgres(ctn di.Container) (database.Database, error) {
 	var err error
 
 	cfg := ctn.Get(static.DiConfig).(models.Config)
-
 	db, err = postgres.InitPostgres(cfg.Postgres)
 
 	if err != nil {

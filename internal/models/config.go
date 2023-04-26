@@ -4,9 +4,10 @@ import "github.com/zekurio/daemon/internal/util/static"
 
 var DefaultConfig = Config{
 	Discord: DiscordConfig{
-		Token:      "",
-		OwnerID:    "",
-		GuildLimit: -1,
+		Token:            "",
+		OwnerID:          "",
+		GuildLimit:       -1,
+		DisabledCommands: []string{},
 	},
 	Postgres: PostgresConfig{
 		Host: "localhost",
@@ -19,9 +20,10 @@ var DefaultConfig = Config{
 }
 
 type DiscordConfig struct {
-	Token      string
-	OwnerID    string
-	GuildLimit int
+	Token            string
+	OwnerID          string
+	GuildLimit       int
+	DisabledCommands []string
 }
 
 type PostgresConfig struct {

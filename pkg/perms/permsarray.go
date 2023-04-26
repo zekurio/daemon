@@ -49,7 +49,6 @@ func (p PermsArray) Update(newPerm string, override bool) (newArray PermsArray, 
 	overridden = !p.Equals(newArray)
 
 	return
-
 }
 
 // Equals checks if the permission array is equal to the given permission array

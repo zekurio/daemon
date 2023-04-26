@@ -11,11 +11,14 @@ type PermsProvider interface {
 	ken.MiddlewareBefore
 
 	// GetPerms collects the permissions of a user from their roles.
-	GetPerms(session *discordgo.Session, guildID, userID string) (perm perms.PermsArray, err error)
+	GetPerms(session *discordgo.Session, guildID, userID string) (perm perms.PermsArray, override bool, err error)
 
 	// GetMemberPerms collects the permissions of a member from their roles.
 	GetMemberPerms(session *discordgo.Session, guildID string, memberID string) (perms.PermsArray, error)
 
 	// HasPerms checks if a user has the given permission.
-	HasPerms(session *discordgo.Session, guildID, userID, perm string) (ok bool, err error)
+	HasPerms(session *discordgo.Session, guildID, userID, perm string) (ok, override bool, err error)
+
+	// HasSubCmdPerms checks if a user has the given permission for a subcommand.
+	HasSubCmdPerms(ctx ken.Context, subPM string, explicit bool, message ...string) (ok bool, err error)
 }

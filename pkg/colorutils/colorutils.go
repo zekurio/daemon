@@ -36,7 +36,6 @@ func GenerateColorFromImage(img image.Image) (color int, err error) {
 	color = int(r>>8)<<16 | int(g>>8)<<8 | int(b>>8)
 
 	return
-
 }
 
 // GenerateColorFromImageURL generates a HEX color from an images prominent color from a URL.

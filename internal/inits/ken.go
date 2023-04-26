@@ -8,6 +8,7 @@ import (
 	"github.com/sarulabs/di/v2"
 	"github.com/zekrotja/ken"
 
+	"github.com/zekurio/daemon/internal/middlewares"
 	"github.com/zekurio/daemon/internal/services/permissions"
 	"github.com/zekurio/daemon/internal/slashcommands"
 	"github.com/zekurio/daemon/internal/usercommands"
@@ -42,6 +43,7 @@ func InitKen(ctn di.Container) (*ken.Ken, error) {
 		new(slashcommands.Guild),
 		new(slashcommands.Perms),
 		new(slashcommands.RoleSelection),
+		new(slashcommands.Vote),
 
 		// usercommands
 		new(usercommands.About),
@@ -52,6 +54,7 @@ func InitKen(ctn di.Container) (*ken.Ken, error) {
 
 	err = k.RegisterMiddlewares(
 		p,
+		middlewares.NewDisableCommandsMiddleware(ctn),
 	)
 
 	return k, err

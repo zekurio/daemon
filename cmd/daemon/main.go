@@ -108,6 +108,17 @@ func main() {
 		log.With(err).Fatal("Command handler creation failed")
 	}
 
+	// Scheduler
+	err = diBuilder.Add(di.Def{
+		Name: static.DiScheduler,
+		Build: func(ctn di.Container) (interface{}, error) {
+			return inits.InitScheduler(ctn), nil
+		},
+	})
+	if err != nil {
+		log.With(err).Fatal("Scheduler creation failed")
+	}
+
 	// Build dependency injection container
 	ctn := diBuilder.Build()
 	// Tear down dependency instances

@@ -26,15 +26,15 @@ func InitDiscord(ctn di.Container) (*discordgo.Session, error) {
 	s.State.TrackMembers = true
 	s.State.TrackVoice = true
 
-	s.AddHandler(listeners.NewReady().Ready)
+	s.AddHandler(listeners.NewListenerReady(ctn).Handler)
 
-	s.AddHandler(listeners.NewGuildCreate(ctn).GuildLimit)
+	s.AddHandler(listeners.NewListenerMembers(ctn).Handler)
 
-	s.AddHandler(listeners.NewGuildRemove(ctn).FlushGuildData)
+	s.AddHandler(listeners.NewListenerGuilds(ctn).Handler)
 
-	s.AddHandler(listeners.NewGuildMemberAdd(ctn).AutoRole)
+	s.AddHandler(listeners.NewListenerAutovoice(ctn).Handler)
 
-	s.AddHandler(listeners.NewVoiceStateUpdate(ctn).AutoVoice)
+	s.AddHandler(listeners.NewListenerVote(ctn).Handler)
 
 	return s, nil
 }
