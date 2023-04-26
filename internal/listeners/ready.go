@@ -6,10 +6,12 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/charmbracelet/log"
+	"github.com/sarulabs/di/v2"
 
 	"github.com/zekurio/daemon/internal/services/database"
 	"github.com/zekurio/daemon/internal/services/scheduler"
 	"github.com/zekurio/daemon/internal/util/autovoice"
+	"github.com/zekurio/daemon/internal/util/static"
 	"github.com/zekurio/daemon/internal/util/vote"
 	"github.com/zekurio/daemon/pkg/discordutils"
 )
@@ -19,8 +21,11 @@ type ListenerReady struct {
 	sched scheduler.Provider
 }
 
-func NewListenerReady() *ListenerReady {
-	return &ListenerReady{}
+func NewListenerReady(ctn di.Container) *ListenerReady {
+	return &ListenerReady{
+		db:    ctn.Get(static.DiDatabase).(database.Database),
+		sched: ctn.Get(static.DiScheduler).(scheduler.Provider),
+	}
 }
 
 func (l *ListenerReady) Handler(s *discordgo.Session, e *discordgo.Ready) {
@@ -66,7 +71,18 @@ func (l *ListenerReady) Handler(s *discordgo.Session, e *discordgo.Ready) {
 					log.Error("Failed deleting AV channel: %s", err.Error())
 				}
 			} else {
-				continue
+				ownerInChannel := false
+				for _, m := range members {
+					if m.User.ID == av.OwnerID {
+						ownerInChannel = true
+						break
+					}
+				}
+				if !ownerInChannel {
+					if err = av.SwitchOwner(s, members); err != nil {
+						log.Error("Failed switching AV channel owner: %s", err.Error())
+					}
+				}
 			}
 		}
 	}

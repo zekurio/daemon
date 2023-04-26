@@ -26,9 +26,7 @@ func InitDiscord(ctn di.Container) (*discordgo.Session, error) {
 	s.State.TrackMembers = true
 	s.State.TrackVoice = true
 
-	s.AddHandler(listeners.NewListenerReady().Handler)
-
-	s.AddHandler(listeners.NewListenerAutovoice(ctn).Handler)
+	s.AddHandler(listeners.NewListenerReady(ctn).Handler)
 
 	s.AddHandler(listeners.NewListenerMembers(ctn).Handler)
 

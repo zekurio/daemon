@@ -51,7 +51,7 @@ func (l *ListenerAutovoice) Handler(s *discordgo.Session, e *discordgo.VoiceStat
 
 	} else if oldVState != nil && newVState.ChannelID != "" && oldVState.ChannelID != newVState.ChannelID {
 
-		avChannel, ok := autovoice.Get(e.UserID)
+		avChannel, ok := autovoice.GetByOwnerID(e.UserID)
 
 		if ok && newVState.ChannelID == avChannel.CreatedChannelID {
 
@@ -71,7 +71,7 @@ func (l *ListenerAutovoice) Handler(s *discordgo.Session, e *discordgo.VoiceStat
 				}
 			}
 		} else if ok && avChannel.CreatedChannelID != "" {
-			if avChannel, ok := autovoice.Get(e.UserID); ok && avChannel.CreatedChannelID != "" {
+			if avChannel, ok := autovoice.GetByOwnerID(e.UserID); ok && avChannel.CreatedChannelID != "" {
 				err := avChannel.Delete(s)
 				if err != nil {
 					return
@@ -83,7 +83,7 @@ func (l *ListenerAutovoice) Handler(s *discordgo.Session, e *discordgo.VoiceStat
 			}
 		}
 	} else if oldVState != nil && oldVState.ChannelID != "" && newVState.ChannelID == "" {
-		if avChannel, ok := autovoice.Get(e.UserID); ok && avChannel.CreatedChannelID != "" {
+		if avChannel, ok := autovoice.GetByOwnerID(e.UserID); ok && avChannel.CreatedChannelID != "" {
 			err := avChannel.Delete(s)
 			if err != nil {
 				return
@@ -94,7 +94,7 @@ func (l *ListenerAutovoice) Handler(s *discordgo.Session, e *discordgo.VoiceStat
 			}
 		}
 	} else if oldVState != nil && oldVState.ChannelID != "" && newVState.GuildID == "" {
-		if avChannel, ok := autovoice.Get(e.UserID); ok && avChannel.CreatedChannelID != "" {
+		if avChannel, ok := autovoice.GetByOwnerID(e.UserID); ok && avChannel.CreatedChannelID != "" {
 			err := avChannel.Delete(s)
 			if err != nil {
 				return
