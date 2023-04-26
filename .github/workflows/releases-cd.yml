@@ -3,6 +3,8 @@ name: Releases CD
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
     tags:
       - '*'
 

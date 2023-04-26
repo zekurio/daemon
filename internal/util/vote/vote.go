@@ -5,15 +5,12 @@ import (
 	"encoding/base64"
 	"encoding/gob"
 	"fmt"
-	"strings"
+	"github.com/zekrotja/ken"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/wcharczuk/go-chart"
-	"github.com/wcharczuk/go-chart/drawing"
 	"github.com/zekurio/daemon/internal/util/static"
 	"github.com/zekurio/daemon/pkg/discordutils"
-	"github.com/zekurio/daemon/pkg/hashutils"
 )
 
 // Vote is a struct for a vote
@@ -27,7 +24,19 @@ type Vote struct {
 	ImageURL      string
 	Expires       time.Time
 	Possibilities []string
-	Ticks         map[string]*Tick
+	ButtonPresses map[string]*ButtonPress
+}
+
+// Button is a struct for a vote button
+type Button struct {
+	Button      *discordgo.Button
+	Possibility string
+}
+
+// ButtonPress is a struct for a button press
+type ButtonPress struct {
+	UserID   string
+	ButtonID string
 }
 
 // Tick is a struct for a tick
@@ -36,20 +45,18 @@ type Tick struct {
 	Tick   int
 }
 
-// VoteState is a type for the state of a vote
-type VoteState int
+// State VoteState is a type for the state of a vote
+type State int
 
 const (
-	VoteStateOpen VoteState = iota
-	VoteStateClosed
-	VoteStateClosedNC
-	VoteStateExpired
+	StateOpen State = iota
+	StateClosed
+	StateClosedNC
+	StateExpired
 )
 
 // VotesRunning is a map of all running votes
 var VotesRunning = map[string]Vote{}
-
-var VoteEmotes = strings.Fields("\u0031\u20E3 \u0032\u20E3 \u0033\u20E3 \u0034\u20E3 \u0035\u20E3 \u0036\u20E3 \u0037\u20E3 \u0038\u20E3 \u0039\u20E3 \u0030\u20E3")
 
 // Unmarshal decodes a vote from a string
 func Unmarshal(data string) (v Vote, err error) {
@@ -84,9 +91,9 @@ func Marshal(v Vote) (data string, err error) {
 	return
 }
 
-// AsEmbed returns a vode as a discordgo.MessageEmbed
-func (v *Vote) AsEmbed(s *discordgo.Session, voteState ...VoteState) (*discordgo.MessageEmbed, error) {
-	state := VoteStateOpen
+// AsEmbed returns a vote as a discordgo.MessageEmbed
+func (v *Vote) AsEmbed(s *discordgo.Session, voteState ...State) (*discordgo.MessageEmbed, error) {
+	state := StateOpen
 	if len(voteState) > 0 {
 		state = voteState[0]
 	}
@@ -104,28 +111,23 @@ func (v *Vote) AsEmbed(s *discordgo.Session, voteState ...VoteState) (*discordgo
 	}
 
 	switch state {
-	case VoteStateClosed, VoteStateClosedNC:
+	case StateClosed, StateClosedNC:
 		title = "Vote closed"
 		color = static.ColorOrange
 		expires = "Closed"
-	case VoteStateExpired:
+	case StateExpired:
 		title = "Vote expired"
 		color = static.ColorViolet
 		expires = fmt.Sprintf("Expired <t:%d:R>", v.Expires.Unix())
 	}
 
-	totalTicks := make(map[int]int)
-	for _, t := range v.Ticks {
-		if _, ok := totalTicks[t.Tick]; !ok {
-			totalTicks[t.Tick] = 1
-		} else {
-			totalTicks[t.Tick]++
-		}
-	}
+	// TODO make this use the button presses
 
 	description := v.Description + "\n\n"
 	for i, p := range v.Possibilities {
-		description += fmt.Sprintf("%s    %s  -  `%d`\n", VoteEmotes[i], p, totalTicks[i])
+		// enumerate possibilities
+		// TODO include press count
+		description += fmt.Sprintf("%d. %s\n", i+1, p)
 	}
 
 	emb := &discordgo.MessageEmbed{
@@ -150,7 +152,8 @@ func (v *Vote) AsEmbed(s *discordgo.Session, voteState ...VoteState) (*discordgo
 		},
 	}
 
-	if len(totalTicks) > 0 && (state == VoteStateClosed || state == VoteStateExpired) {
+	/* TODO make this use the button presses
+	if len(totalTicks) > 0 && (state == StateClosed || state == StateExpired) {
 
 		values := make([]chart.Value, len(v.Possibilities))
 
@@ -192,6 +195,7 @@ func (v *Vote) AsEmbed(s *discordgo.Session, voteState ...VoteState) (*discordgo
 			return nil, err
 		}
 	}
+	*/
 
 	if v.ImageURL != "" {
 		emb.Image = &discordgo.MessageEmbedImage{
@@ -202,7 +206,7 @@ func (v *Vote) AsEmbed(s *discordgo.Session, voteState ...VoteState) (*discordgo
 	return emb, nil
 }
 
-// AsField returns a vode as a discordgo.MessageEmbedField
+// AsField returns a vote as a discordgo.MessageEmbedField
 func (v *Vote) AsField() *discordgo.MessageEmbedField {
 	shortenedDescription := v.Description
 	if len(shortenedDescription) > 200 {
@@ -217,49 +221,17 @@ func (v *Vote) AsField() *discordgo.MessageEmbedField {
 	return &discordgo.MessageEmbedField{
 		Name: fmt.Sprintf("ID `%s`", v.ID),
 		Value: fmt.Sprintf("**Description:** %s\n%s\n`%d votes`\n[*Jump to message*](%s)",
-			shortenedDescription, expiresTxt, len(v.Ticks), discordutils.GetMessageLink(&discordgo.Message{
+			shortenedDescription, expiresTxt, len(v.ButtonPresses), discordutils.GetMessageLink(&discordgo.Message{
 				ID:        v.MsgID,
 				ChannelID: v.ChannelID,
 			}, v.GuildID)),
 	}
 }
 
-// AddReactions adds the vote reactions to the vote message
-func (v *Vote) AddReactions(s *discordgo.Session) error {
-	for i := 0; i < len(v.Possibilities); i++ {
-		err := s.MessageReactionAdd(v.ChannelID, v.MsgID, VoteEmotes[i])
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
+// AddButtons adds the buttons to the vote
+func (v *Vote) AddButtons(cb *ken.ComponentBuilder) {}
 
-// Tick maps the specificed tick from a user to a vote
-func (v *Vote) Tick(s *discordgo.Session, userID string, tick int) (err error) {
-	if userID, err = hashutils.HashSnowflake(userID, []byte(v.ID)); err != nil {
-		return
-	}
-
-	if t, ok := v.Ticks[userID]; ok {
-		t.Tick = tick
-	} else {
-		v.Ticks[userID] = &Tick{
-			UserID: userID,
-			Tick:   tick,
-		}
-	}
-
-	emb, err := v.AsEmbed(s)
-	if err != nil {
-		return
-	}
-
-	_, err = s.ChannelMessageEditEmbed(v.ChannelID, v.MsgID, emb)
-	return
-}
-
-// SetExpires sets the expiration time of the vote and updates the message
+// SetExpire sets the expiration time of the vote and updates the message
 func (v *Vote) SetExpire(s *discordgo.Session, d time.Duration) error {
 	v.Expires = time.Now().Add(d)
 
@@ -273,7 +245,7 @@ func (v *Vote) SetExpire(s *discordgo.Session, d time.Duration) error {
 }
 
 // Close closes the vote and removes it from the running votes
-func (v *Vote) Close(s *discordgo.Session, voteState VoteState) error {
+func (v *Vote) Close(s *discordgo.Session, voteState State) error {
 	delete(VotesRunning, v.ID)
 	emb, err := v.AsEmbed(s, voteState)
 	if err != nil {

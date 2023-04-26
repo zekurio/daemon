@@ -189,7 +189,7 @@ func (c *Vote) create(ctx ken.SubCommandContext) (err error) {
 		Possibilities: split,
 		ImageURL:      imgLink,
 		Expires:       expires,
-		Ticks:         make(map[string]*vote.Tick),
+		ButtonPresses: make(map[string]*vote.ButtonPress),
 	}
 
 	emb, err := ivote.AsEmbed(ctx.GetSession())
@@ -204,8 +204,10 @@ func (c *Vote) create(ctx ken.SubCommandContext) (err error) {
 	}
 	var msg = fum.Message
 
+	b := fum.AddComponents()
+
 	ivote.MsgID = msg.ID
-	err = ivote.AddReactions(ctx.GetSession())
+	ivote.AddButtons(b)
 	if err != nil {
 		return err
 	}
@@ -269,10 +271,10 @@ func (c *Vote) expire(ctx ken.SubCommandContext) (err error) {
 func (c *Vote) close(ctx ken.SubCommandContext) (err error) {
 	db := ctx.Get(static.DiDatabase).(database.Database)
 
-	state := vote.VoteStateClosed
+	state := vote.StateClosed
 
 	if showChartV, ok := ctx.Options().GetByNameOptional("chart"); ok && !showChartV.BoolValue() {
-		state = vote.VoteStateClosedNC
+		state = vote.StateClosedNC
 	}
 
 	id := ctx.Options().GetByName("id").StringValue()

@@ -33,7 +33,7 @@ func (l *ListenerReady) Handler(s *discordgo.Session, e *discordgo.Ready) {
 	if err != nil {
 		return
 	}
-	log.Info("Signed in!", "Username", fmt.Sprintf("%s#%s", s.State.User.Username, s.State.User.Discriminator), "ID", s.State.User.ID)
+	log.Info("Signed in!", "Username", fmt.Sprintf("%s#%s", e.User.Username, e.User.Discriminator), "ID", e.User.ID)
 	log.Infof("Invite link: %s", discordutils.GetInviteLink(s))
 
 	l.sched.Start()
@@ -48,7 +48,10 @@ func (l *ListenerReady) Handler(s *discordgo.Session, e *discordgo.Ready) {
 		now := time.Now()
 		for _, v := range vote.VotesRunning {
 			if (v.Expires != time.Time{}) && v.Expires.Before(now) {
-				v.Close(s, vote.VoteStateExpired)
+				err := v.Close(s, vote.StateExpired)
+				if err != nil {
+					log.Error("Failed closing vote: %s", err.Error())
+				}
 				if err = l.db.DeleteVote(v.ID); err != nil {
 					log.Error("Failed deleting vote from database: %s", err.Error())
 				}
