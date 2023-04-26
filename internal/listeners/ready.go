@@ -36,24 +36,27 @@ func (l *ListenerReady) Handler(s *discordgo.Session, e *discordgo.Ready) {
 	log.Info("Signed in!", "Username", fmt.Sprintf("%s#%s", s.State.User.Username, s.State.User.Discriminator), "ID", s.State.User.ID)
 	log.Infof("Invite link: %s", discordutils.GetInviteLink(s))
 
-	votes, err := l.db.GetVotes()
-	if err != nil {
-	} else {
+	l.sched.Start()
+
+	_, err = l.sched.Schedule("*/30 * * * * *", func() {
+		votes, err := l.db.GetVotes()
+		if err != nil {
+			log.Error("Failed getting votes from database: %s", err.Error())
+			return
+		}
 		vote.VotesRunning = votes
-		_, err = l.sched.Schedule("*/10 * * * * *", func() {
-			now := time.Now()
-			for _, v := range vote.VotesRunning {
-				if (v.Expires != time.Time{}) && v.Expires.Before(now) {
-					v.Close(s, vote.VoteStateExpired)
-					if err = l.db.DeleteVote(v.ID); err != nil {
-						log.Error("Failed deleting vote from database: %s", err.Error())
-					}
+		now := time.Now()
+		for _, v := range vote.VotesRunning {
+			if (v.Expires != time.Time{}) && v.Expires.Before(now) {
+				v.Close(s, vote.VoteStateExpired)
+				if err = l.db.DeleteVote(v.ID); err != nil {
+					log.Error("Failed deleting vote from database: %s", err.Error())
 				}
 			}
-		})
-		if err != nil {
-			log.Error("Failed scheduling vote cleanup: %s", err.Error())
 		}
+	})
+	if err != nil {
+		log.Error("Failed scheduling vote cleanup: %s", err.Error())
 	}
 
 	autovoices, err := l.db.GetAVChannels()

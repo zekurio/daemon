@@ -14,8 +14,6 @@
 
 - Fixed a bug where moving across guilds would cause auto voice to stop working for the user entirely
 
-- 
-
 # Docker
 
 You can find the DockerHub page of daemon [here](https://hub.docker.com/r/zekurio/daemon) and the GHCR Package [here](https://github.com/zekurio?tab=packages&repo_name=daemon)
