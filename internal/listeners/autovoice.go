@@ -23,7 +23,6 @@ func NewListenerAutovoice(ctn di.Container) *ListenerAutovoice {
 }
 
 func (l *ListenerAutovoice) Handler(s *discordgo.Session, e *discordgo.VoiceStateUpdate) {
-
 	oldVState := l.voiceStateCache[e.UserID]
 	newVState := e.VoiceState
 

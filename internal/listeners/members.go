@@ -11,18 +11,17 @@ import (
 	"github.com/zekurio/daemon/pkg/arrayutils"
 )
 
-type GuildMemeberAdd struct {
+type ListenerMembers struct {
 	db database.Database
 }
 
-func NewGuildMemberAdd(ctn di.Container) *GuildMemeberAdd {
-	return &GuildMemeberAdd{
+func NewListenerMembers(ctn di.Container) *ListenerMembers {
+	return &ListenerMembers{
 		db: ctn.Get(static.DiDatabase).(database.Database),
 	}
 }
 
-func (g *GuildMemeberAdd) AutoRole(s *discordgo.Session, e *discordgo.GuildMemberAdd) {
-
+func (g *ListenerMembers) Handler(s *discordgo.Session, e *discordgo.GuildMemberAdd) {
 	autoroleIDs, err := g.db.GetAutoRoles(e.GuildID)
 	if err != nil && err != dberr.ErrNotFound {
 		log.With(err).Error("Failed getting auto role settings")
