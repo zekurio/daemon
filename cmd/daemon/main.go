@@ -122,7 +122,12 @@ func main() {
 	// Build dependency injection container
 	ctn := diBuilder.Build()
 	// Tear down dependency instances
-	defer ctn.DeleteWithSubContainers()
+	defer func(ctn di.Container) {
+		err := ctn.DeleteWithSubContainers()
+		if err != nil {
+			log.With(err).Fatal("Failed to tear down dependency instances")
+		}
+	}(ctn)
 
 	ctn.Get(static.DiCommandHandler)
 

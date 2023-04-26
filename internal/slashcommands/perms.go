@@ -125,6 +125,13 @@ func (c *Perms) list(ctx ken.SubCommandContext) (err error) {
 		return err
 	}
 
+	if len(gPerms) == 0 {
+		return ctx.FollowUpEmbed(&discordgo.MessageEmbed{
+			Title:       "Permissions",
+			Description: "No permissions set.",
+		}).Send().Error
+	}
+
 	msgstr := ""
 
 	for _, role := range sortedGuildRoles {
