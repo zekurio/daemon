@@ -181,7 +181,6 @@ func (c *Vote) create(ctx ken.SubCommandContext) (err error) {
 
 	ivote := vote.Vote{
 		ID:          ctx.GetEvent().ID,
-		MsgID:       "",
 		CreatorID:   ctx.User().ID,
 		GuildID:     ctx.GetEvent().GuildID,
 		ChannelID:   ctx.GetEvent().ChannelID,
@@ -203,11 +202,10 @@ func (c *Vote) create(ctx ken.SubCommandContext) (err error) {
 	if err != nil {
 		return
 	}
-	var msg = fum.Message
 
 	b := fum.AddComponents()
 
-	ivote.MsgID = msg.ID
+	ivote.MsgID = fum.Message.ID
 	_, err = ivote.AddButtons(b)
 	if err != nil {
 		return err
