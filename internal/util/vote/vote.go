@@ -5,7 +5,12 @@ import (
 	"encoding/base64"
 	"encoding/gob"
 	"fmt"
+	"github.com/rs/xid"
+	"github.com/wcharczuk/go-chart"
+	"github.com/wcharczuk/go-chart/drawing"
 	"github.com/zekrotja/ken"
+	"github.com/zekurio/daemon/pkg/arrayutils"
+	"github.com/zekurio/daemon/pkg/hashutils"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -15,34 +20,30 @@ import (
 
 // Vote is a struct for a vote
 type Vote struct {
-	ID            string
-	MsgID         string
-	CreatorID     string
-	GuildID       string
-	ChannelID     string
-	Description   string
-	ImageURL      string
-	Expires       time.Time
-	Possibilities []string
-	ButtonPresses map[string]*ButtonPress
+	ID          string
+	MsgID       string
+	CreatorID   string
+	GuildID     string
+	ChannelID   string
+	Description string
+	ImageURL    string
+	Expires     time.Time
+	Choices     []string
+	Buttons     map[string]ChoiceButton
+	CurrentVote map[string]CurrentVote
 }
 
-// Button is a struct for a vote button
-type Button struct {
-	Button      *discordgo.Button
-	Possibility string
+// ChoiceButton is a struct for a choice button that
+// is used to vote
+type ChoiceButton struct {
+	Button *discordgo.Button
+	Choice string
 }
 
-// ButtonPress is a struct for a button press
-type ButtonPress struct {
-	UserID   string
-	ButtonID string
-}
-
-// Tick is a struct for a tick
-type Tick struct {
+// CurrentVote is a struct for a current user vote
+type CurrentVote struct {
 	UserID string
-	Tick   int
+	Choice int // the number of the choice in the vote
 }
 
 // State VoteState is a type for the state of a vote
@@ -121,13 +122,19 @@ func (v *Vote) AsEmbed(s *discordgo.Session, voteState ...State) (*discordgo.Mes
 		expires = fmt.Sprintf("Expired <t:%d:R>", v.Expires.Unix())
 	}
 
-	// TODO make this use the button presses
+	totalVotes := map[int]int{}
+	for _, cv := range v.CurrentVote {
+		if _, ok := totalVotes[cv.Choice]; !ok {
+			totalVotes[cv.Choice] = 1
+		} else {
+			totalVotes[cv.Choice]++
+		}
+	}
 
 	description := v.Description + "\n\n"
-	for i, p := range v.Possibilities {
+	for i, p := range v.Choices {
 		// enumerate possibilities
-		// TODO include press count
-		description += fmt.Sprintf("%d. %s\n", i+1, p)
+		description += fmt.Sprintf("%d. %s - %d\n", i+1, p, totalVotes[i])
 	}
 
 	emb := &discordgo.MessageEmbed{
@@ -152,15 +159,14 @@ func (v *Vote) AsEmbed(s *discordgo.Session, voteState ...State) (*discordgo.Mes
 		},
 	}
 
-	/* TODO make this use the button presses
-	if len(totalTicks) > 0 && (state == StateClosed || state == StateExpired) {
+	if len(totalVotes) > 0 && (state == StateClosed || state == StateExpired) {
 
-		values := make([]chart.Value, len(v.Possibilities))
+		values := make([]chart.Value, len(v.Choices))
 
-		for i, p := range v.Possibilities {
+		for i, p := range v.Choices {
 			values[i] = chart.Value{
-				Value: float64(totalTicks[i]),
 				Label: p,
+				Value: float64(totalVotes[i]),
 			}
 		}
 
@@ -195,7 +201,6 @@ func (v *Vote) AsEmbed(s *discordgo.Session, voteState ...State) (*discordgo.Mes
 			return nil, err
 		}
 	}
-	*/
 
 	if v.ImageURL != "" {
 		emb.Image = &discordgo.MessageEmbedImage{
@@ -221,60 +226,86 @@ func (v *Vote) AsField() *discordgo.MessageEmbedField {
 	return &discordgo.MessageEmbedField{
 		Name: fmt.Sprintf("ID `%s`", v.ID),
 		Value: fmt.Sprintf("**Description:** %s\n%s\n`%d votes`\n[*Jump to message*](%s)",
-			shortenedDescription, expiresTxt, len(v.ButtonPresses), discordutils.GetMessageLink(&discordgo.Message{
+			shortenedDescription, expiresTxt, len(v.CurrentVote), discordutils.GetMessageLink(&discordgo.Message{
 				ID:        v.MsgID,
 				ChannelID: v.ChannelID,
 			}, v.GuildID)),
 	}
 }
 
-// AddButtons adds the buttons to the vote
-func (v *Vote) AddButtons(cb *ken.ComponentBuilder) (err error) {
-	buttons := make([]Button, len(v.Possibilities))
-	for i, p := range v.Possibilities {
-		customID := fmt.Sprintf("vote_%s_option_%d", v.ID, i)
-		button := Button{
-			Button: &discordgo.Button{
-				Label:    p,
-				Style:    discordgo.PrimaryButton,
-				CustomID: customID,
-			},
-			Possibility: p,
+// AddButtons adds the buttons to the vote and returns an array of the choice names
+func (v *Vote) AddButtons(cb *ken.ComponentBuilder) ([]string, error) {
+
+	choiceButtons := map[string]*discordgo.Button{}
+	for _, c := range v.Choices {
+		choiceButtons[c] = &discordgo.Button{
+			Label:    c,
+			Style:    discordgo.PrimaryButton,
+			CustomID: xid.New().String(),
 		}
-		buttons[i] = button
 	}
 
-	numRows := len(buttons) / 5
-	if len(buttons)%5 > 0 {
-		numRows++
+	nCols := len(choiceButtons) / 5
+	if len(choiceButtons)%5 != 0 {
+		nCols++
 	}
 
-	buttonRows := make([][]Button, numRows)
-	for i := range buttonRows {
-		start := i * 5
-		end := start + 5
-		if end > len(buttons) {
-			end = len(buttons)
-		}
-		buttonRows[i] = buttons[start:end]
+	choiceButtonColumns := make([][]ChoiceButton, nCols)
+	choiceStrs := make([]string, len(choiceButtons))
+	i := 0
+	for cStr, cBtn := range choiceButtons {
+		choiceButtonColumns[i/5] = append(choiceButtonColumns[i/5], ChoiceButton{
+			Button: cBtn,
+			Choice: cStr,
+		})
+		choiceStrs = append(choiceStrs, cStr)
+		i++
 	}
 
-	for _, row := range buttonRows {
+	for _, cBtns := range choiceButtonColumns {
 		cb.AddActionsRow(func(b ken.ComponentAssembler) {
-			for _, btn := range row {
-				b.Add(btn.Button, OnButtonPress(btn.Button.CustomID, v))
+			for _, cBtn := range cBtns {
+				b.Add(cBtn.Button, OnChoiceSelect(cBtn.Choice, v))
 			}
+			closeBtn := &discordgo.Button{
+				Label:    "Close",
+				Style:    discordgo.DangerButton,
+				CustomID: xid.New().String(),
+			}
+
+			closeNCBtn := &discordgo.Button{
+				Label:    "Close (no chart)",
+				Style:    discordgo.DangerButton,
+				CustomID: xid.New().String(),
+			}
+
+			b.Add(closeBtn, OnChoiceSelect("close", v))
+			b.Add(closeNCBtn, OnChoiceSelect("closenc", v))
+
 		})
 	}
 
-	_, err = cb.Build()
+	_, err := cb.Build()
 
-	return err
+	return choiceStrs, err
 
 }
 
-func OnButtonPress(customID string, v *Vote) func(ctx ken.ComponentContext) bool {
+func OnChoiceSelect(choice string, v *Vote) func(ctx ken.ComponentContext) bool {
 	return func(ctx ken.ComponentContext) bool {
+
+		if choice == "close" {
+			err := v.Close(ctx.GetSession(), StateClosed)
+			if err != nil {
+				return false
+			}
+		} else if choice == "closenc" {
+			err := v.Close(ctx.GetSession(), StateClosedNC)
+			if err != nil {
+				return false
+			}
+		}
+
 		ctx.SetEphemeral(true)
 		err := ctx.Defer()
 		if err != nil {
@@ -282,41 +313,53 @@ func OnButtonPress(customID string, v *Vote) func(ctx ken.ComponentContext) bool
 		}
 
 		userID := ctx.User().ID
+		if userID, err = hashutils.HashSnowflake(userID, []byte(v.ID)); err != nil {
+			return false
+		}
+		newChoice := choice
+		oldChoice := v.Choices[v.CurrentVote[userID].Choice]
 
-		// Check if the user has already voted
-		changedVote := false
-		for _, buttonPress := range v.ButtonPresses {
-			if buttonPress.UserID == userID {
-				// Update the user's vote
-				buttonPress.ButtonID = customID
-				changedVote = true
-				break
+		// check if user has already voted
+		if _, ok := v.CurrentVote[ctx.User().ID]; ok {
+			// check if user is changing their vote
+			// or removing their vote
+			if newChoice == oldChoice {
+				delete(v.CurrentVote, userID)
+				err = ctx.FollowUpEmbed(&discordgo.MessageEmbed{
+					Description: fmt.Sprintf("Your vote for `%s` has been removed", oldChoice),
+				}).Send().DeleteAfter(5 * time.Second).Error
+			} else {
+				// change vote
+				v.CurrentVote[userID] = CurrentVote{
+					Choice: arrayutils.IndexOf[string](v.Choices, newChoice),
+					UserID: userID,
+				}
+				err = ctx.FollowUpEmbed(&discordgo.MessageEmbed{
+					Description: fmt.Sprintf("Your vote has been changed from `%s` to `%s`", oldChoice, newChoice),
+				}).Send().DeleteAfter(5 * time.Second).Error
 			}
-		}
-
-		// If the user has not voted yet, add their vote
-		if !changedVote {
-			v.ButtonPresses[customID] = &ButtonPress{
-				UserID:   userID,
-				ButtonID: customID,
+		} else {
+			// add vote
+			v.CurrentVote[userID] = CurrentVote{
+				Choice: arrayutils.IndexOf[string](v.Choices, newChoice),
+				UserID: userID,
 			}
+			err = ctx.FollowUpEmbed(&discordgo.MessageEmbed{
+				Description: fmt.Sprintf("Your vote for `%s` has been added", newChoice),
+			}).Send().DeleteAfter(5 * time.Second).Error
 		}
 
-		// Update the embed message with the new vote count
-		s := ctx.GetSession()
-		emb, err := v.AsEmbed(s)
+		emb, err := v.AsEmbed(ctx.GetSession())
 		if err != nil {
-			err = ctx.FollowUpError("Failed to update the vote count.", "").Send().DeleteAfter(10 * time.Second).Error
-			return err == nil
-		}
-		_, err = s.ChannelMessageEditEmbed(v.ChannelID, v.MsgID, emb)
-		if err != nil {
-			err = ctx.FollowUpError("Failed to update the vote count.", "").Send().DeleteAfter(10 * time.Second).Error
-			return err == nil
+			return false
 		}
 
-		return true
+		_, err = ctx.GetSession().ChannelMessageEditEmbed(v.ChannelID, v.MsgID, emb)
+
+		return err == nil
+
 	}
+
 }
 
 // SetExpire sets the expiration time of the vote and updates the message
@@ -332,7 +375,7 @@ func (v *Vote) SetExpire(s *discordgo.Session, d time.Duration) error {
 	return err
 }
 
-// Close closes the vote and removes it from the running votes
+// Close closes the vote, removes the buttons and updates the message
 func (v *Vote) Close(s *discordgo.Session, voteState State) error {
 	delete(VotesRunning, v.ID)
 	emb, err := v.AsEmbed(s, voteState)

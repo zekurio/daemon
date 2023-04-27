@@ -1,4 +1,3 @@
-// TODO handle errors at db level
 package postgres
 
 import (

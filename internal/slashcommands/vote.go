@@ -156,7 +156,7 @@ func (c *Vote) create(ctx ken.SubCommandContext) (err error) {
 	for i, e := range split {
 		if len(e) < 1 {
 			return ctx.FollowUpError(
-				"Possibilities can not be empty.", "").
+				"Choices can not be empty.", "").
 				Send().Error
 		}
 		split[i] = strings.Trim(e, " \t")
@@ -180,16 +180,17 @@ func (c *Vote) create(ctx ken.SubCommandContext) (err error) {
 	}
 
 	ivote := vote.Vote{
-		ID:            ctx.GetEvent().ID,
-		MsgID:         "",
-		CreatorID:     ctx.User().ID,
-		GuildID:       ctx.GetEvent().GuildID,
-		ChannelID:     ctx.GetEvent().ChannelID,
-		Description:   body,
-		Possibilities: split,
-		ImageURL:      imgLink,
-		Expires:       expires,
-		ButtonPresses: make(map[string]*vote.ButtonPress),
+		ID:          ctx.GetEvent().ID,
+		MsgID:       "",
+		CreatorID:   ctx.User().ID,
+		GuildID:     ctx.GetEvent().GuildID,
+		ChannelID:   ctx.GetEvent().ChannelID,
+		Description: body,
+		Choices:     split,
+		ImageURL:    imgLink,
+		Expires:     expires,
+		Buttons:     map[string]vote.ChoiceButton{},
+		CurrentVote: map[string]vote.CurrentVote{},
 	}
 
 	emb, err := ivote.AsEmbed(ctx.GetSession())
@@ -207,7 +208,7 @@ func (c *Vote) create(ctx ken.SubCommandContext) (err error) {
 	b := fum.AddComponents()
 
 	ivote.MsgID = msg.ID
-	err = ivote.AddButtons(b)
+	_, err = ivote.AddButtons(b)
 	if err != nil {
 		return err
 	}
@@ -286,8 +287,14 @@ func (c *Vote) close(ctx ken.SubCommandContext) (err error) {
 		for _, v := range vote.VotesRunning {
 			if v.GuildID == ctx.GetEvent().GuildID && v.CreatorID == ctx.User().ID {
 				go func(vC vote.Vote) {
-					db.DeleteVote(vC.ID)
-					vC.Close(ctx.GetSession(), state)
+					err := db.DeleteVote(vC.ID)
+					if err != nil {
+						return
+					}
+					err = vC.Close(ctx.GetSession(), state)
+					if err != nil {
+						return
+					}
 				}(v)
 				i++
 			}
