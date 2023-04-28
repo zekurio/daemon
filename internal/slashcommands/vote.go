@@ -269,10 +269,10 @@ func (c *Vote) expire(ctx ken.SubCommandContext) (err error) {
 func (c *Vote) close(ctx ken.SubCommandContext) (err error) {
 	db := ctx.Get(static.DiDatabase).(database.Database)
 
-	state := vote.VoteStateClosed
+	state := vote.StateClosed
 
 	if showChartV, ok := ctx.Options().GetByNameOptional("chart"); ok && !showChartV.BoolValue() {
-		state = vote.VoteStateClosedNC
+		state = vote.ClosedNC
 	}
 
 	id := ctx.Options().GetByName("id").StringValue()

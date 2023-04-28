@@ -9,7 +9,7 @@ import (
 )
 
 // Request executes a HTTP request with the passed method, url, headers and body.
-// It returns the response and errors if one occured.
+// It returns the response and errors if one occurred.
 func Request(method, url string, headers map[string]string, data interface{}) (res *Response, err error) {
 	defer func() {
 		if err != nil && res != nil {

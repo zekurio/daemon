@@ -163,7 +163,7 @@ func (c *Perms) set(ctx ken.SubCommandContext) (err error) {
 
 	cPerm, ok := gPerms[role.ID]
 	if !ok {
-		cPerm = make(perms.PermsArray, 0)
+		cPerm = make(perms.Array, 0)
 	}
 
 	cPerm, changed := cPerm.Update(nPerm, false)

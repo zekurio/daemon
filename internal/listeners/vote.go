@@ -35,7 +35,7 @@ func (l *ListenerVote) Handler(s *discordgo.Session, e *discordgo.MessageReactio
 			continue
 		}
 		tick := -1
-		for i, ve := range vote.VoteEmotes {
+		for i, ve := range vote.Emotes {
 			if e.Emoji.Name == ve {
 				tick = i
 			}

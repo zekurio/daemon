@@ -48,7 +48,7 @@ func (l *ListenerReady) Handler(s *discordgo.Session, e *discordgo.Ready) {
 		now := time.Now()
 		for _, v := range vote.VotesRunning {
 			if (v.Expires != time.Time{}) && v.Expires.Before(now) {
-				v.Close(s, vote.VoteStateExpired)
+				v.Close(s, vote.StateExpired)
 				if err = l.db.DeleteVote(v.ID); err != nil {
 					log.Error("Failed deleting vote from database: %s", err.Error())
 				}
