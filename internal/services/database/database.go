@@ -1,7 +1,6 @@
 package database
 
 import (
-	"github.com/zekurio/daemon/internal/models"
 	"github.com/zekurio/daemon/internal/util/autovoice"
 	"github.com/zekurio/daemon/internal/util/vote"
 	"github.com/zekurio/daemon/pkg/perms"
@@ -24,15 +23,6 @@ type Database interface {
 
 	GetPermissions(guildID string) (map[string]perms.PermsArray, error)
 	SetPermissions(guildID, roleID string, perms perms.PermsArray) error
-
-	// Role selection
-
-	AddRoleSelections(v []models.RoleSelection) error
-	GetRoleSelections() ([]models.RoleSelection, error)
-	RemoveRoleSelections(guildID, channelID, messageID string) error
-
-	// Quotes
-	// TODO
 
 	// Votes
 

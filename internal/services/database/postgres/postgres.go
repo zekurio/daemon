@@ -150,65 +150,6 @@ func (p *Postgres) SetPermissions(guildID, roleID string, perms perms.PermsArray
 
 }
 
-// ROLESELECTION
-
-func (p *Postgres) AddRoleSelections(v []models.RoleSelection) error {
-
-	var (
-		err          error
-		failedInsert = []models.RoleSelection{}
-	)
-
-	for _, r := range v {
-		_, err := p.db.Exec(`INSERT INTO roleselection (guild_id, channel_id, message_id, role_id) VALUES ($1, $2, $3, $4)`, r.GuildID, r.ChannelID, r.MessageID, r.RoleID)
-		if err != nil {
-			failedInsert = append(failedInsert, r)
-		}
-	}
-
-	if len(failedInsert) > 0 || err != nil {
-		return fmt.Errorf("failed to insert roleselections: %v", failedInsert)
-	}
-
-	return nil
-
-}
-
-func (p *Postgres) GetRoleSelections() ([]models.RoleSelection, error) {
-
-	var (
-		err          error
-		failedSelect = []models.RoleSelection{}
-	)
-
-	rows, err := p.db.Query(`SELECT guild_id, channel_id, message_id, role_id FROM roleselection`)
-	if err != nil {
-		return nil, p.wrapErr(err)
-	}
-
-	var results []models.RoleSelection
-	for rows.Next() {
-		var r models.RoleSelection
-		err := rows.Scan(&r.GuildID, &r.ChannelID, &r.MessageID, &r.RoleID)
-		if err != nil {
-			failedSelect = append(failedSelect, r)
-		}
-		results = append(results, r)
-	}
-
-	if len(failedSelect) > 0 || err != nil {
-		return nil, fmt.Errorf("failed to select roleselections: %v", failedSelect)
-	}
-
-	return results, nil
-
-}
-
-func (p *Postgres) RemoveRoleSelections(guildID, channelID, messageID string) error {
-	_, err := p.db.Exec(`DELETE FROM roleselection WHERE guild_id = $1 AND channel_id = $2 AND message_id = $3`, guildID, channelID, messageID)
-	return err
-}
-
 // VOTES
 
 func (p *Postgres) GetVotes() (map[string]vote.Vote, error) {
