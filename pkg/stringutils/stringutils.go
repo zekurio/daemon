@@ -75,7 +75,7 @@ func HasPatternAny(str string, patterns ...string) bool {
 	return false
 }
 
-// Capitalize uppercases the first character of the
+// Capitalize uppercase's the first character of the
 // given string.
 //
 // If all is true, all starting characters of all

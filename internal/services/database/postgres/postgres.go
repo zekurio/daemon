@@ -1,4 +1,3 @@
-// TODO handle errors at db level
 package postgres
 
 import (
@@ -103,8 +102,8 @@ func (p *Postgres) SetAutoVoice(guildID string, channelIDs []string) error {
 
 // PERMISSIONS
 
-func (p *Postgres) GetPermissions(guildID string) (map[string]perms.PermsArray, error) {
-	results := make(map[string]perms.PermsArray)
+func (p *Postgres) GetPermissions(guildID string) (map[string]perms.Array, error) {
+	results := make(map[string]perms.Array)
 	rows, err := p.db.Query(`SELECT role_id, perms FROM permissions WHERE guild_id = $1`, guildID)
 	if err != nil {
 		return nil, p.wrapErr(err)
@@ -125,7 +124,7 @@ func (p *Postgres) GetPermissions(guildID string) (map[string]perms.PermsArray, 
 	return results, nil
 }
 
-func (p *Postgres) SetPermissions(guildID, roleID string, perms perms.PermsArray) error {
+func (p *Postgres) SetPermissions(guildID, roleID string, perms perms.Array) error {
 
 	if len(perms) == 0 {
 		_, err := p.db.Exec(`DELETE FROM permissions WHERE guild_id = $1 AND role_id = $2`, guildID, roleID)
@@ -291,7 +290,7 @@ func (p *Postgres) wrapErr(err error) error {
 	return err
 }
 
-// GetValue retrieves a specific value from a PostgreSQL table.
+// GetValue retrieves a specific value from a PostgresSQL table.
 func GetValue[TVal, TWv any](t *Postgres, table, valueKey, whereKey string, whereValue TWv) (TVal, error) {
 	var value TVal
 	query := fmt.Sprintf(`SELECT "%s" FROM %s WHERE "%s" = $1`, valueKey, table, whereKey)
@@ -299,7 +298,7 @@ func GetValue[TVal, TWv any](t *Postgres, table, valueKey, whereKey string, wher
 	return value, t.wrapErr(err)
 }
 
-// SetValue updates a specific value in a PostgreSQL table, or inserts a new row if none is found.
+// SetValue updates a specific value in a PostgresSQL table, or inserts a new row if none is found.
 func SetValue[TVal, TWv any](t *Postgres, table, valueKey string, value TVal, whereKey string, whereValue TWv) error {
 	updateQuery := fmt.Sprintf(`UPDATE %s SET "%s" = $1 WHERE "%s" = $2`, table, valueKey, whereKey)
 	result, err := t.db.Exec(updateQuery, value, whereValue)

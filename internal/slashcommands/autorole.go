@@ -44,12 +44,12 @@ func (c *Autorole) Options() []*discordgo.ApplicationCommandOption {
 		{
 			Type:        discordgo.ApplicationCommandOptionSubCommand,
 			Name:        "list",
-			Description: "Display the current autoroles.",
+			Description: "Display the current autorole roles.",
 		},
 		{
 			Type:        discordgo.ApplicationCommandOptionSubCommand,
 			Name:        "add",
-			Description: "Add a role to autoroles.",
+			Description: "Add a role to autorole.",
 			Options: []*discordgo.ApplicationCommandOption{
 				{
 					Type:        discordgo.ApplicationCommandOptionRole,
@@ -62,7 +62,7 @@ func (c *Autorole) Options() []*discordgo.ApplicationCommandOption {
 		{
 			Type:        discordgo.ApplicationCommandOptionSubCommand,
 			Name:        "remove",
-			Description: "Remove a role from autoroles.",
+			Description: "Remove a role from autorole.",
 			Options: []*discordgo.ApplicationCommandOption{
 				{
 					Type:        discordgo.ApplicationCommandOptionRole,
@@ -75,7 +75,7 @@ func (c *Autorole) Options() []*discordgo.ApplicationCommandOption {
 		{
 			Type:        discordgo.ApplicationCommandOptionSubCommand,
 			Name:        "purge",
-			Description: "Unset all autoroles.",
+			Description: "Unset all autorole roles.",
 		},
 	}
 }
