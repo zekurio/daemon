@@ -44,12 +44,12 @@ func (c *Autovoice) Options() []*discordgo.ApplicationCommandOption {
 		{
 			Type:        discordgo.ApplicationCommandOptionSubCommand,
 			Name:        "list",
-			Description: "Display the current autovoices.",
+			Description: "Display the current autovoice channels.",
 		},
 		{
 			Type:        discordgo.ApplicationCommandOptionSubCommand,
 			Name:        "add",
-			Description: "Add a channel to autovoices.",
+			Description: "Add a channel to autovoice channels.",
 			Options: []*discordgo.ApplicationCommandOption{
 				{
 					Type:         discordgo.ApplicationCommandOptionChannel,
@@ -63,7 +63,7 @@ func (c *Autovoice) Options() []*discordgo.ApplicationCommandOption {
 		{
 			Type:        discordgo.ApplicationCommandOptionSubCommand,
 			Name:        "remove",
-			Description: "Remove a channel from autovoices.",
+			Description: "Remove a channel from autovoice.",
 			Options: []*discordgo.ApplicationCommandOption{
 				{
 					Type:        discordgo.ApplicationCommandOptionChannel,
@@ -76,7 +76,7 @@ func (c *Autovoice) Options() []*discordgo.ApplicationCommandOption {
 		{
 			Type:        discordgo.ApplicationCommandOptionSubCommand,
 			Name:        "purge",
-			Description: "Unset all autovoices.",
+			Description: "Unset all autovoice channels.",
 		},
 	}
 }
@@ -141,7 +141,7 @@ func (c *Autovoice) add(ctx ken.SubCommandContext) (err error) {
 
 	autovoice, err := db.GetAutoVoice(ctx.GetEvent().GuildID)
 	if err != nil && err != dberr.ErrNotFound {
-		return ctx.FollowUpError("An error occurred while fetching autovoices.", "Database Error").Send().Error
+		return ctx.FollowUpError("An error occurred while fetching autovoice channels.", "Database Error").Send().Error
 	}
 
 	if arrayutils.Contains(autovoice, channel.ID) {

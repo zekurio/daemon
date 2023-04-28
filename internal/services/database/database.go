@@ -7,7 +7,7 @@ import (
 )
 
 // Database is the interface for our database service
-// which is then implemented by either postgres or nutsdb
+// which is then implemented by postgres
 type Database interface {
 	Close() error
 
@@ -21,8 +21,8 @@ type Database interface {
 
 	// Permissions
 
-	GetPermissions(guildID string) (map[string]perms.PermsArray, error)
-	SetPermissions(guildID, roleID string, perms perms.PermsArray) error
+	GetPermissions(guildID string) (map[string]perms.Array, error)
+	SetPermissions(guildID, roleID string, perms perms.Array) error
 
 	// Votes
 

@@ -114,7 +114,7 @@ func FindUserVS(session *discordgo.Session, userID string) (discordgo.VoiceState
 	return discordgo.VoiceState{}, false
 }
 
-// FindUserChannel returns a users voice channel
+// FindGuildTextChannel returns the first text channel in a guild.
 func FindGuildTextChannel(session *discordgo.Session, guildID string) *discordgo.Channel {
 	g, err := GetGuild(session, guildID)
 	if err != nil {

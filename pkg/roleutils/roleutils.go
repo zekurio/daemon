@@ -38,7 +38,7 @@ func Sort(roles []*discordgo.Role, reversed bool) []*discordgo.Role {
 }
 
 // GetSortedMemberRoles returns the guilds roles sorted either ascending or
-// descending. Can also include the everyone role.
+// descending. Can also include the @everyone role.
 func GetSortedMemberRoles(session *discordgo.Session, guildID, memberID string, includeEveryone, reversed bool) ([]*discordgo.Role, error) {
 	member, err := session.GuildMember(guildID, memberID)
 	if err != nil {

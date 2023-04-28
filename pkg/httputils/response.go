@@ -24,7 +24,7 @@ type Response struct {
 
 // JSON parses the response body data to the
 // passed object reference using JSON decoder
-// and returns errors occured.
+// and returns errors occurred.
 func (r *Response) JSON(v interface{}) error {
 	return json.Unmarshal(r.Body(), v)
 }

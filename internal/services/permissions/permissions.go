@@ -57,7 +57,7 @@ func (p *Permissions) Before(ctx *ken.Ctx) (next bool, err error) {
 	return true, err
 }
 
-func (p *Permissions) GetPerms(session *discordgo.Session, guildID, userID string) (perm perms.PermsArray, override bool, err error) {
+func (p *Permissions) GetPerms(session *discordgo.Session, guildID, userID string) (perm perms.Array, override bool, err error) {
 
 	if guildID != "" {
 		perm, err = p.GetMemberPerms(session, guildID, userID)
@@ -65,11 +65,11 @@ func (p *Permissions) GetPerms(session *discordgo.Session, guildID, userID strin
 			return
 		}
 	} else {
-		perm = make(perms.PermsArray, 0)
+		perm = make(perms.Array, 0)
 	}
 
 	if p.cfg.Discord.OwnerID == userID {
-		perm = perms.PermsArray{"+dm.*"}
+		perm = perms.Array{"+dm.*"}
 		override = true
 		return
 	}
@@ -77,12 +77,12 @@ func (p *Permissions) GetPerms(session *discordgo.Session, guildID, userID strin
 	if guildID != "" {
 		guild, err := discordutils.GetGuild(session, guildID)
 		if err != nil {
-			return perms.PermsArray{}, false, err
+			return perms.Array{}, false, err
 		}
 
 		member, err := discordutils.GetMember(session, guildID, userID)
 		if err != nil {
-			return perms.PermsArray{}, false, err
+			return perms.Array{}, false, err
 		}
 
 		if userID == guild.OwnerID || (member != nil && discordutils.IsAdmin(guild, member)) {
@@ -111,7 +111,7 @@ func (p *Permissions) GetPerms(session *discordgo.Session, guildID, userID strin
 
 }
 
-func (p *Permissions) GetMemberPerms(session *discordgo.Session, guildID string, memberID string) (perms.PermsArray, error) {
+func (p *Permissions) GetMemberPerms(session *discordgo.Session, guildID string, memberID string) (perms.Array, error) {
 	guildPerms, err := p.db.GetPermissions(guildID)
 	if err != nil {
 		return nil, err
@@ -121,7 +121,7 @@ func (p *Permissions) GetMemberPerms(session *discordgo.Session, guildID string,
 		return nil, err
 	}
 
-	var res perms.PermsArray
+	var res perms.Array
 	for _, r := range membRoles {
 		if p, ok := guildPerms[r.ID]; ok {
 			if res == nil {

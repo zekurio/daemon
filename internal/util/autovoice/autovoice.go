@@ -136,7 +136,7 @@ func (a *AVChannel) Delete(s *discordgo.Session) (err error) {
 	return
 }
 
-// SwitchOwner switches the owner of a autovoice channel to the next member in the list,
+// SwitchOwner switches the owner of an autovoice channel to the next member in the list,
 // in case Delete was called while the channel was not empty
 func (a *AVChannel) SwitchOwner(s *discordgo.Session, members []*discordgo.Member) (err error) {
 	var (

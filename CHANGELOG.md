@@ -4,19 +4,18 @@
 
 ## Features
 
-- Autovoice now also works after a restart
-
-- VOTES ARE HERE!
-
-- Commands can now be disabled in the config
+- Removing role select for now, rewrite coming soon
 
 ## Bug fixes
 
-- Fixed a bug where moving across guilds would cause auto voice to stop working for the user entirely
+## Known issues
+
+- Autovoice is still having some issues, but those could be entirely related to Discord itself
 
 # Docker
 
-You can find the DockerHub page of daemon [here](https://hub.docker.com/r/zekurio/daemon) and the GHCR Package [here](https://github.com/zekurio?tab=packages&repo_name=daemon)
+You can find the DockerHub page of daemon [here](https://hub.docker.com/r/zekurio/daemon) and the GHCR
+Package [here](https://github.com/zekurio?tab=packages&repo_name=daemon)
 
 Pull the docker image of this release:
 

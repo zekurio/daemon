@@ -140,7 +140,7 @@ func main() {
 	ctn.Get(static.DiDatabase)
 
 	// Block main go routine until one of the following
-	// specified exit syscalls occure.
+	// specified exit sys calls occure.
 	log.Info("Started event loop. Stop with CTRL-C...")
 
 	log.Info("Initialization finished")

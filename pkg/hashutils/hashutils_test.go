@@ -38,8 +38,8 @@ func TestSnowflake(t *testing.T) {
 	}
 
 	{
-		salt1 := []byte("pepperv2")
-		salt2 := []byte("saltv2")
+		salt1 := []byte("pepper2")
+		salt2 := []byte("salt2")
 
 		hash1, err := HashSnowflake(uid1, salt1)
 		assert.Nil(t, err)

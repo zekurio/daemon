@@ -2,7 +2,7 @@ package perms
 
 import "testing"
 
-func equalButUnsorted(p1, p2 PermsArray) bool {
+func equalButUnsorted(p1, p2 Array) bool {
 	for _, v1 := range p1 {
 		contains := false
 		for _, v2 := range p2 {
@@ -32,7 +32,7 @@ func equalButUnsorted(p1, p2 PermsArray) bool {
 
 func TestUpdate(t *testing.T) {
 
-	p1 := PermsArray{
+	p1 := Array{
 		"+foo.bar",
 		"-foo.baz",
 	}
@@ -43,13 +43,13 @@ func TestUpdate(t *testing.T) {
 	}
 	if !equalButUnsorted(
 		p2,
-		PermsArray{
+		Array{
 			"+foo.bar",
 			"-foo.baz",
 			"+foo.foobar",
 		},
 	) {
-		t.Error("unexprected update result")
+		t.Error("unexpected update result")
 	}
 
 	p2, updated = p1.Update("-foo.foobar", false)
@@ -58,13 +58,13 @@ func TestUpdate(t *testing.T) {
 	}
 	if !equalButUnsorted(
 		p2,
-		PermsArray{
+		Array{
 			"+foo.bar",
 			"-foo.baz",
 			"-foo.foobar",
 		},
 	) {
-		t.Error("unexprected update result")
+		t.Error("unexpected update result")
 	}
 
 	p2, updated = p1.Update("+foo.bar", false)
@@ -75,7 +75,7 @@ func TestUpdate(t *testing.T) {
 		p2,
 		p1,
 	) {
-		t.Error("unexprected update result")
+		t.Error("unexpected update result")
 	}
 
 	p2, updated = p1.Update("+foo.baz", false)
@@ -84,11 +84,11 @@ func TestUpdate(t *testing.T) {
 	}
 	if !equalButUnsorted(
 		p2,
-		PermsArray{
+		Array{
 			"+foo.bar",
 		},
 	) {
-		t.Error("unexprected update result")
+		t.Error("unexpected update result")
 	}
 
 	p2, updated = p1.Update("-foo.bar", false)
@@ -97,11 +97,11 @@ func TestUpdate(t *testing.T) {
 	}
 	if !equalButUnsorted(
 		p2,
-		PermsArray{
+		Array{
 			"-foo.baz",
 		},
 	) {
-		t.Error("unexprected update result")
+		t.Error("unexpected update result")
 	}
 
 	p2, updated = p1.Update("-foo.bar", false)
@@ -110,11 +110,11 @@ func TestUpdate(t *testing.T) {
 	}
 	if !equalButUnsorted(
 		p2,
-		PermsArray{
+		Array{
 			"-foo.baz",
 		},
 	) {
-		t.Error("unexprected update result")
+		t.Error("unexpected update result")
 	}
 
 	p2, updated = p1.Update("-foo.bar", false)
@@ -123,11 +123,11 @@ func TestUpdate(t *testing.T) {
 	}
 	if !equalButUnsorted(
 		p2,
-		PermsArray{
+		Array{
 			"-foo.baz",
 		},
 	) {
-		t.Error("unexprected update result")
+		t.Error("unexpected update result")
 	}
 
 	p2, updated = p1.Update("-foo.bar", true)
@@ -136,12 +136,12 @@ func TestUpdate(t *testing.T) {
 	}
 	if !equalButUnsorted(
 		p2,
-		PermsArray{
+		Array{
 			"-foo.bar",
 			"-foo.baz",
 		},
 	) {
-		t.Error("unexprected update result")
+		t.Error("unexpected update result")
 	}
 
 	p2, updated = p1.Update("+foo.baz", true)
@@ -150,12 +150,12 @@ func TestUpdate(t *testing.T) {
 	}
 	if !equalButUnsorted(
 		p2,
-		PermsArray{
+		Array{
 			"+foo.bar",
 			"+foo.baz",
 		},
 	) {
-		t.Error("unexprected update result")
+		t.Error("unexpected update result")
 	}
 
 	p2, updated = p1.Update("-foo.foobar", true)
@@ -164,13 +164,13 @@ func TestUpdate(t *testing.T) {
 	}
 	if !equalButUnsorted(
 		p2,
-		PermsArray{
+		Array{
 			"+foo.bar",
 			"-foo.baz",
 			"-foo.foobar",
 		},
 	) {
-		t.Error("unexprected update result")
+		t.Error("unexpected update result")
 	}
 
 	p2, updated = p1.Update("+foo.bar", true)
@@ -179,18 +179,18 @@ func TestUpdate(t *testing.T) {
 	}
 	if !equalButUnsorted(
 		p2,
-		PermsArray{
+		Array{
 			"+foo.bar",
 			"-foo.baz",
 		},
 	) {
-		t.Error("unexprected update result")
+		t.Error("unexpected update result")
 	}
 
 }
 
 func TestEquals(t *testing.T) {
-	p1 := PermsArray{
+	p1 := Array{
 		"+foo.bar",
 		"-foo.baz",
 	}
@@ -198,16 +198,16 @@ func TestEquals(t *testing.T) {
 		t.Error("equal arrays have unequal res")
 	}
 
-	p1 = PermsArray{}
+	p1 = Array{}
 	if !p1.Equals(p1) {
 		t.Error("equal arrays have unequal res")
 	}
 
-	p1 = PermsArray{
+	p1 = Array{
 		"+foo.bar",
 		"-foo.baz",
 	}
-	p2 := PermsArray{
+	p2 := Array{
 		"-foo.baz",
 		"+foo.bar",
 	}
@@ -215,11 +215,11 @@ func TestEquals(t *testing.T) {
 		t.Error("unequal arrays have equal res")
 	}
 
-	p1 = PermsArray{
+	p1 = Array{
 		"+foo.bar",
 		"-foo.baz",
 	}
-	p2 = PermsArray{
+	p2 = Array{
 		"-foo.baz",
 	}
 	if p1.Equals(p2) {
@@ -228,11 +228,11 @@ func TestEquals(t *testing.T) {
 }
 
 func TestHas(t *testing.T) {
-	p := PermsArray{
+	p := Array{
 		"+foo.bar",
 		"+foo.baz.*",
 		"-foo.foobar",
-		"-foo.foobaz.*",
+		"-foo.foobar.*",
 	}
 	if !p.Has("foo.bar") {
 		t.Error("check failed")
@@ -246,11 +246,11 @@ func TestHas(t *testing.T) {
 		t.Error("check failed")
 	}
 
-	if p.Has("foo.foobaz.c") {
+	if p.Has("foo.foobar.c") {
 		t.Error("check failed")
 	}
 
-	if p.Has("foo.foobaz") {
+	if p.Has("foo.foobar") {
 		t.Error("check failed")
 	}
 
