@@ -156,7 +156,7 @@ func (c *Vote) create(ctx ken.SubCommandContext) (err error) {
 	for i, e := range split {
 		if len(e) < 1 {
 			return ctx.FollowUpError(
-				"Possibilities can not be empty.", "").
+				"Choices can not be empty.", "").
 				Send().Error
 		}
 		split[i] = strings.Trim(e, " \t")
@@ -180,16 +180,16 @@ func (c *Vote) create(ctx ken.SubCommandContext) (err error) {
 	}
 
 	ivote := vote.Vote{
-		ID:            ctx.GetEvent().ID,
-		MsgID:         "",
-		CreatorID:     ctx.User().ID,
-		GuildID:       ctx.GetEvent().GuildID,
-		ChannelID:     ctx.GetEvent().ChannelID,
-		Description:   body,
-		Possibilities: split,
-		ImageURL:      imgLink,
-		Expires:       expires,
-		Ticks:         make(map[string]*vote.Tick),
+		ID:          ctx.GetEvent().ID,
+		CreatorID:   ctx.User().ID,
+		GuildID:     ctx.GetEvent().GuildID,
+		ChannelID:   ctx.GetEvent().ChannelID,
+		Description: body,
+		Choices:     split,
+		ImageURL:    imgLink,
+		Expires:     expires,
+		Buttons:     map[string]vote.ChoiceButton{},
+		CurrentVote: map[string]vote.CurrentVote{},
 	}
 
 	emb, err := ivote.AsEmbed(ctx.GetSession())
@@ -202,10 +202,11 @@ func (c *Vote) create(ctx ken.SubCommandContext) (err error) {
 	if err != nil {
 		return
 	}
-	var msg = fum.Message
 
-	ivote.MsgID = msg.ID
-	err = ivote.AddReactions(ctx.GetSession())
+	b := fum.AddComponents()
+
+	ivote.MsgID = fum.Message.ID
+	_, err = ivote.AddButtons(b)
 	if err != nil {
 		return err
 	}
@@ -256,7 +257,9 @@ func (c *Vote) expire(ctx ken.SubCommandContext) (err error) {
 		}
 	}
 
-	ivote.SetExpire(ctx.GetSession(), expireDuration)
+	if err = ivote.SetExpire(ctx.GetSession(), expireDuration); err != nil {
+		return err
+	}
 	if err = db.AddUpdateVote(*ivote); err != nil {
 		return err
 	}
@@ -272,7 +275,7 @@ func (c *Vote) close(ctx ken.SubCommandContext) (err error) {
 	state := vote.StateClosed
 
 	if showChartV, ok := ctx.Options().GetByNameOptional("chart"); ok && !showChartV.BoolValue() {
-		state = vote.ClosedNC
+		state = vote.StateClosedNC
 	}
 
 	id := ctx.Options().GetByName("id").StringValue()
@@ -282,8 +285,14 @@ func (c *Vote) close(ctx ken.SubCommandContext) (err error) {
 		for _, v := range vote.VotesRunning {
 			if v.GuildID == ctx.GetEvent().GuildID && v.CreatorID == ctx.User().ID {
 				go func(vC vote.Vote) {
-					db.DeleteVote(vC.ID)
-					vC.Close(ctx.GetSession(), state)
+					err := db.DeleteVote(vC.ID)
+					if err != nil {
+						return
+					}
+					err = vC.Close(ctx.GetSession(), state)
+					if err != nil {
+						return
+					}
 				}(v)
 				i++
 			}
@@ -310,7 +319,7 @@ func (c *Vote) close(ctx ken.SubCommandContext) (err error) {
 	if ivote.CreatorID != ctx.User().ID && !ok && !override {
 		return ctx.FollowUpError(
 			"You do not have the permission to close another ones votes.", "").
-			Send().Error
+			Send().DeleteAfter(5 * time.Second).Error
 	}
 
 	err = db.DeleteVote(ivote.ID)
@@ -324,6 +333,6 @@ func (c *Vote) close(ctx ken.SubCommandContext) (err error) {
 
 	err = ctx.FollowUpEmbed(&discordgo.MessageEmbed{
 		Description: "Vote closed.",
-	}).Send().Error
+	}).Send().DeleteAfter(5 * time.Second).Error
 	return
 }

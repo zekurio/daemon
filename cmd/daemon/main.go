@@ -59,7 +59,10 @@ func main() {
 		Close: func(obj interface{}) error {
 			d := obj.(database.Database)
 			log.Info("Shutting down database connection...")
-			d.Close()
+			err := d.Close()
+			if err != nil {
+				return err
+			}
 			return nil
 		},
 	})

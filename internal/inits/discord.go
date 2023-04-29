@@ -34,7 +34,5 @@ func InitDiscord(ctn di.Container) (*discordgo.Session, error) {
 
 	s.AddHandler(listeners.NewListenerAutovoice(ctn).Handler)
 
-	s.AddHandler(listeners.NewListenerVote(ctn).Handler)
-
 	return s, nil
 }

@@ -5,51 +5,58 @@ import (
 	"encoding/base64"
 	"encoding/gob"
 	"fmt"
-	"strings"
 	"time"
 
+	"github.com/rs/xid"
+	"github.com/zekrotja/ken"
+	"github.com/zekurio/daemon/pkg/arrayutils"
+	"github.com/zekurio/daemon/pkg/hashutils"
+
 	"github.com/bwmarrin/discordgo"
-	"github.com/wcharczuk/go-chart"
-	"github.com/wcharczuk/go-chart/drawing"
 	"github.com/zekurio/daemon/internal/util/static"
 	"github.com/zekurio/daemon/pkg/discordutils"
-	"github.com/zekurio/daemon/pkg/hashutils"
 )
 
 // Vote is a struct for a vote
 type Vote struct {
-	ID            string
-	MsgID         string
-	CreatorID     string
-	GuildID       string
-	ChannelID     string
-	Description   string
-	ImageURL      string
-	Expires       time.Time
-	Possibilities []string
-	Ticks         map[string]*Tick
+	ID          string
+	MsgID       string
+	CreatorID   string
+	GuildID     string
+	ChannelID   string
+	Description string
+	ImageURL    string
+	Expires     time.Time
+	Choices     []string
+	Buttons     map[string]ChoiceButton
+	CurrentVote map[string]CurrentVote
 }
 
-// Tick is a struct for a tick
-type Tick struct {
+// ChoiceButton is a struct for a choice button that
+// is used to vote
+type ChoiceButton struct {
+	Button *discordgo.Button
+	Choice string
+}
+
+// CurrentVote is a struct for a current user vote
+type CurrentVote struct {
 	UserID string
-	Tick   int
+	Choice int // the number of the choice in the vote
 }
 
-// State is a type for the state of a vote
+// State VoteState is a type for the state of a vote
 type State int
 
 const (
 	StateOpen State = iota
 	StateClosed
-	ClosedNC
+	StateClosedNC
 	StateExpired
 )
 
 // VotesRunning is a map of all running votes
 var VotesRunning = map[string]Vote{}
-
-var Emotes = strings.Fields("\u0031\u20E3 \u0032\u20E3 \u0033\u20E3 \u0034\u20E3 \u0035\u20E3 \u0036\u20E3 \u0037\u20E3 \u0038\u20E3 \u0039\u20E3 \u0030\u20E3")
 
 // Unmarshal decodes a vote from a string
 func Unmarshal(data string) (v Vote, err error) {
@@ -84,7 +91,7 @@ func Marshal(v Vote) (data string, err error) {
 	return
 }
 
-// AsEmbed returns a vode as a discordgo.MessageEmbed
+// AsEmbed returns a vote as a discordgo.MessageEmbed
 func (v *Vote) AsEmbed(s *discordgo.Session, voteState ...State) (*discordgo.MessageEmbed, error) {
 	state := StateOpen
 	if len(voteState) > 0 {
@@ -104,7 +111,7 @@ func (v *Vote) AsEmbed(s *discordgo.Session, voteState ...State) (*discordgo.Mes
 	}
 
 	switch state {
-	case StateClosed, ClosedNC:
+	case StateClosed, StateClosedNC:
 		title = "Vote closed"
 		color = static.ColorOrange
 		expires = "Closed"
@@ -114,18 +121,18 @@ func (v *Vote) AsEmbed(s *discordgo.Session, voteState ...State) (*discordgo.Mes
 		expires = fmt.Sprintf("Expired <t:%d:R>", v.Expires.Unix())
 	}
 
-	totalTicks := make(map[int]int)
-	for _, t := range v.Ticks {
-		if _, ok := totalTicks[t.Tick]; !ok {
-			totalTicks[t.Tick] = 1
+	totalVotes := map[int]int{}
+	for _, cv := range v.CurrentVote {
+		if _, ok := totalVotes[cv.Choice]; !ok {
+			totalVotes[cv.Choice] = 1
 		} else {
-			totalTicks[t.Tick]++
+			totalVotes[cv.Choice]++
 		}
 	}
 
 	description := v.Description + "\n\n"
-	for i, p := range v.Possibilities {
-		description += fmt.Sprintf("%s    %s  -  `%d`\n", Emotes[i], p, totalTicks[i])
+	for i, p := range v.Choices {
+		description += fmt.Sprintf("**%d. %s** - `%d`\n", i+1, p, totalVotes[i])
 	}
 
 	emb := &discordgo.MessageEmbed{
@@ -150,49 +157,6 @@ func (v *Vote) AsEmbed(s *discordgo.Session, voteState ...State) (*discordgo.Mes
 		},
 	}
 
-	if len(totalTicks) > 0 && (state == StateClosed || state == StateExpired) {
-
-		values := make([]chart.Value, len(v.Possibilities))
-
-		for i, p := range v.Possibilities {
-			values[i] = chart.Value{
-				Value: float64(totalTicks[i]),
-				Label: p,
-			}
-		}
-
-		pie := chart.PieChart{
-			Width:  512,
-			Height: 512,
-			Values: values,
-			Background: chart.Style{
-				FillColor: drawing.ColorTransparent,
-			},
-		}
-
-		imgData := []byte{}
-		buff := bytes.NewBuffer(imgData)
-		err = pie.Render(chart.PNG, buff)
-		if err != nil {
-			return nil, err
-		}
-
-		_, err := s.ChannelMessageSendComplex(v.ChannelID, &discordgo.MessageSend{
-			File: &discordgo.File{
-				Name:   fmt.Sprintf("vote_chart_%s.png", v.ID),
-				Reader: buff,
-			},
-			Reference: &discordgo.MessageReference{
-				MessageID: v.MsgID,
-				ChannelID: v.ChannelID,
-				GuildID:   v.GuildID,
-			},
-		})
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	if v.ImageURL != "" {
 		emb.Image = &discordgo.MessageEmbedImage{
 			URL: v.ImageURL,
@@ -202,7 +166,7 @@ func (v *Vote) AsEmbed(s *discordgo.Session, voteState ...State) (*discordgo.Mes
 	return emb, nil
 }
 
-// AsField returns a vode as a discordgo.MessageEmbedField
+// AsField returns a vote as a discordgo.MessageEmbedField
 func (v *Vote) AsField() *discordgo.MessageEmbedField {
 	shortenedDescription := v.Description
 	if len(shortenedDescription) > 200 {
@@ -217,46 +181,120 @@ func (v *Vote) AsField() *discordgo.MessageEmbedField {
 	return &discordgo.MessageEmbedField{
 		Name: fmt.Sprintf("ID `%s`", v.ID),
 		Value: fmt.Sprintf("**Description:** %s\n%s\n`%d votes`\n[*Jump to message*](%s)",
-			shortenedDescription, expiresTxt, len(v.Ticks), discordutils.GetMessageLink(&discordgo.Message{
+			shortenedDescription, expiresTxt, len(v.CurrentVote), discordutils.GetMessageLink(&discordgo.Message{
 				ID:        v.MsgID,
 				ChannelID: v.ChannelID,
 			}, v.GuildID)),
 	}
 }
 
-// AddReactions adds the vote reactions to the vote message
-func (v *Vote) AddReactions(s *discordgo.Session) error {
-	for i := 0; i < len(v.Possibilities); i++ {
-		err := s.MessageReactionAdd(v.ChannelID, v.MsgID, Emotes[i])
-		if err != nil {
-			return err
+// AddButtons adds the buttons to the vote and returns an array of the choice names
+func (v *Vote) AddButtons(cb *ken.ComponentBuilder) ([]string, error) {
+
+	choiceButtons := map[string]*discordgo.Button{}
+	for _, c := range v.Choices {
+		choiceButtons[c] = &discordgo.Button{
+			Label:    c,
+			Style:    discordgo.PrimaryButton,
+			CustomID: xid.New().String(),
 		}
 	}
-	return nil
+
+	nCols := len(choiceButtons) / 5
+	if len(choiceButtons)%5 != 0 {
+		nCols++
+	}
+
+	choiceButtonColumns := make([][]ChoiceButton, nCols)
+	choiceStrs := make([]string, len(choiceButtons))
+	i := 0
+	for cStr, cBtn := range choiceButtons {
+		choiceButtonColumns[i/5] = append(choiceButtonColumns[i/5], ChoiceButton{
+			Button: cBtn,
+			Choice: cStr,
+		})
+		choiceStrs = append(choiceStrs, cStr)
+		i++
+	}
+
+	for _, cBtns := range choiceButtonColumns {
+		cb.AddActionsRow(func(b ken.ComponentAssembler) {
+			for _, cBtn := range cBtns {
+				b.Add(cBtn.Button, OnChoiceSelect(cBtn.Choice, v))
+			}
+		})
+	}
+
+	_, err := cb.Build()
+
+	return choiceStrs, err
+
 }
 
-// Tick maps the specificed tick from a user to a vote
-func (v *Vote) Tick(s *discordgo.Session, userID string, tick int) (err error) {
-	if userID, err = hashutils.HashSnowflake(userID, []byte(v.ID)); err != nil {
-		return
-	}
+func OnChoiceSelect(choice string, v *Vote) func(ctx ken.ComponentContext) bool {
+	return func(ctx ken.ComponentContext) bool {
 
-	if t, ok := v.Ticks[userID]; ok {
-		t.Tick = tick
-	} else {
-		v.Ticks[userID] = &Tick{
-			UserID: userID,
-			Tick:   tick,
+		if choice == "close" {
+			err := v.Close(ctx.GetSession(), StateClosed)
+			if err != nil {
+				return false
+			}
 		}
+
+		ctx.SetEphemeral(true)
+		err := ctx.Defer()
+		if err != nil {
+			return false
+		}
+
+		userID := ctx.User().ID
+		if userID, err = hashutils.HashSnowflake(userID, []byte(v.ID)); err != nil {
+			return false
+		}
+		newChoice := choice
+		oldChoice := v.Choices[v.CurrentVote[userID].Choice]
+
+		// check if user has already voted
+		if _, ok := v.CurrentVote[ctx.User().ID]; ok {
+			// check if user is changing their vote
+			// or removing their vote
+			if newChoice == oldChoice {
+				delete(v.CurrentVote, userID)
+				err = ctx.FollowUpEmbed(&discordgo.MessageEmbed{
+					Description: fmt.Sprintf("Your vote for `%s` has been removed", oldChoice),
+				}).Send().DeleteAfter(5 * time.Second).Error
+			} else {
+				// change vote
+				v.CurrentVote[userID] = CurrentVote{
+					Choice: arrayutils.IndexOf(v.Choices, newChoice),
+					UserID: userID,
+				}
+				err = ctx.FollowUpEmbed(&discordgo.MessageEmbed{
+					Description: fmt.Sprintf("Your vote has been changed from `%s` to `%s`", oldChoice, newChoice),
+				}).Send().DeleteAfter(5 * time.Second).Error
+			}
+		} else {
+			// add vote
+			v.CurrentVote[userID] = CurrentVote{
+				Choice: arrayutils.IndexOf(v.Choices, newChoice),
+				UserID: userID,
+			}
+			err = ctx.FollowUpEmbed(&discordgo.MessageEmbed{
+				Description: fmt.Sprintf("Your vote for `%s` has been added", newChoice),
+			}).Send().DeleteAfter(5 * time.Second).Error
+		}
+
+		emb, err := v.AsEmbed(ctx.GetSession())
+		if err != nil {
+			return false
+		}
+
+		_, err = ctx.GetSession().ChannelMessageEditEmbed(v.ChannelID, v.MsgID, emb)
+
+		return err == nil
+
 	}
 
-	emb, err := v.AsEmbed(s)
-	if err != nil {
-		return
-	}
-
-	_, err = s.ChannelMessageEditEmbed(v.ChannelID, v.MsgID, emb)
-	return
 }
 
 // SetExpire sets the expiration time of the vote and updates the message
@@ -272,17 +310,22 @@ func (v *Vote) SetExpire(s *discordgo.Session, d time.Duration) error {
 	return err
 }
 
-// Close closes the vote and removes it from the running votes
+// Close closes the vote, removes the buttons and updates the message
 func (v *Vote) Close(s *discordgo.Session, voteState State) error {
-	delete(VotesRunning, v.ID)
 	emb, err := v.AsEmbed(s, voteState)
 	if err != nil {
 		return err
 	}
-	_, err = s.ChannelMessageEditEmbed(v.ChannelID, v.MsgID, emb)
+
+	_, err = s.ChannelMessageEditComplex(&discordgo.MessageEdit{
+		Embed:      emb,
+		Components: []discordgo.MessageComponent{},
+		Channel:    v.ChannelID,
+		ID:         v.MsgID,
+	})
 	if err != nil {
 		return err
 	}
-	err = s.MessageReactionsRemoveAll(v.ChannelID, v.MsgID)
+	delete(VotesRunning, v.ID)
 	return err
 }
