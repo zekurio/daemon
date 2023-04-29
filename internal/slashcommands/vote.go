@@ -319,7 +319,7 @@ func (c *Vote) close(ctx ken.SubCommandContext) (err error) {
 	if ivote.CreatorID != ctx.User().ID && !ok && !override {
 		return ctx.FollowUpError(
 			"You do not have the permission to close another ones votes.", "").
-			Send().Error
+			Send().DeleteAfter(5 * time.Second).Error
 	}
 
 	err = db.DeleteVote(ivote.ID)
@@ -333,6 +333,6 @@ func (c *Vote) close(ctx ken.SubCommandContext) (err error) {
 
 	err = ctx.FollowUpEmbed(&discordgo.MessageEmbed{
 		Description: "Vote closed.",
-	}).Send().Error
+	}).Send().DeleteAfter(5 * time.Second).Error
 	return
 }

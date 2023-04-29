@@ -5,13 +5,12 @@ import (
 	"encoding/base64"
 	"encoding/gob"
 	"fmt"
+	"time"
+
 	"github.com/rs/xid"
-	"github.com/wcharczuk/go-chart"
-	"github.com/wcharczuk/go-chart/drawing"
 	"github.com/zekrotja/ken"
 	"github.com/zekurio/daemon/pkg/arrayutils"
 	"github.com/zekurio/daemon/pkg/hashutils"
-	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/zekurio/daemon/internal/util/static"
@@ -133,8 +132,7 @@ func (v *Vote) AsEmbed(s *discordgo.Session, voteState ...State) (*discordgo.Mes
 
 	description := v.Description + "\n\n"
 	for i, p := range v.Choices {
-		// enumerate possibilities
-		description += fmt.Sprintf("%d. %s - %d\n", i+1, p, totalVotes[i])
+		description += fmt.Sprintf("**%d. %s** - `%d`\n", i+1, p, totalVotes[i])
 	}
 
 	emb := &discordgo.MessageEmbed{
@@ -157,49 +155,6 @@ func (v *Vote) AsEmbed(s *discordgo.Session, voteState ...State) (*discordgo.Mes
 				Inline: false,
 			},
 		},
-	}
-
-	if len(totalVotes) > 0 && (state == StateClosed || state == StateExpired) {
-
-		values := make([]chart.Value, len(v.Choices))
-
-		for i, p := range v.Choices {
-			values[i] = chart.Value{
-				Label: p,
-				Value: float64(totalVotes[i]),
-			}
-		}
-
-		pie := chart.PieChart{
-			Width:  512,
-			Height: 512,
-			Values: values,
-			Background: chart.Style{
-				FillColor: drawing.ColorTransparent,
-			},
-		}
-
-		imgData := []byte{}
-		buff := bytes.NewBuffer(imgData)
-		err = pie.Render(chart.PNG, buff)
-		if err != nil {
-			return nil, err
-		}
-
-		_, err := s.ChannelMessageSendComplex(v.ChannelID, &discordgo.MessageSend{
-			File: &discordgo.File{
-				Name:   fmt.Sprintf("vote_chart_%s.png", v.ID),
-				Reader: buff,
-			},
-			Reference: &discordgo.MessageReference{
-				MessageID: v.MsgID,
-				ChannelID: v.ChannelID,
-				GuildID:   v.GuildID,
-			},
-		})
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	if v.ImageURL != "" {
@@ -267,21 +222,6 @@ func (v *Vote) AddButtons(cb *ken.ComponentBuilder) ([]string, error) {
 			for _, cBtn := range cBtns {
 				b.Add(cBtn.Button, OnChoiceSelect(cBtn.Choice, v))
 			}
-			closeBtn := &discordgo.Button{
-				Label:    "Close",
-				Style:    discordgo.DangerButton,
-				CustomID: xid.New().String(),
-			}
-
-			closeNCBtn := &discordgo.Button{
-				Label:    "Close (no chart)",
-				Style:    discordgo.DangerButton,
-				CustomID: xid.New().String(),
-			}
-
-			b.Add(closeBtn, OnChoiceSelect("close", v))
-			b.Add(closeNCBtn, OnChoiceSelect("closenc", v))
-
 		})
 	}
 
@@ -296,11 +236,6 @@ func OnChoiceSelect(choice string, v *Vote) func(ctx ken.ComponentContext) bool 
 
 		if choice == "close" {
 			err := v.Close(ctx.GetSession(), StateClosed)
-			if err != nil {
-				return false
-			}
-		} else if choice == "closenc" {
-			err := v.Close(ctx.GetSession(), StateClosedNC)
 			if err != nil {
 				return false
 			}
@@ -331,7 +266,7 @@ func OnChoiceSelect(choice string, v *Vote) func(ctx ken.ComponentContext) bool 
 			} else {
 				// change vote
 				v.CurrentVote[userID] = CurrentVote{
-					Choice: arrayutils.IndexOf[string](v.Choices, newChoice),
+					Choice: arrayutils.IndexOf(v.Choices, newChoice),
 					UserID: userID,
 				}
 				err = ctx.FollowUpEmbed(&discordgo.MessageEmbed{
@@ -341,7 +276,7 @@ func OnChoiceSelect(choice string, v *Vote) func(ctx ken.ComponentContext) bool 
 		} else {
 			// add vote
 			v.CurrentVote[userID] = CurrentVote{
-				Choice: arrayutils.IndexOf[string](v.Choices, newChoice),
+				Choice: arrayutils.IndexOf(v.Choices, newChoice),
 				UserID: userID,
 			}
 			err = ctx.FollowUpEmbed(&discordgo.MessageEmbed{
@@ -377,15 +312,20 @@ func (v *Vote) SetExpire(s *discordgo.Session, d time.Duration) error {
 
 // Close closes the vote, removes the buttons and updates the message
 func (v *Vote) Close(s *discordgo.Session, voteState State) error {
-	delete(VotesRunning, v.ID)
 	emb, err := v.AsEmbed(s, voteState)
 	if err != nil {
 		return err
 	}
-	_, err = s.ChannelMessageEditEmbed(v.ChannelID, v.MsgID, emb)
+
+	_, err = s.ChannelMessageEditComplex(&discordgo.MessageEdit{
+		Embed:      emb,
+		Components: []discordgo.MessageComponent{},
+		Channel:    v.ChannelID,
+		ID:         v.MsgID,
+	})
 	if err != nil {
 		return err
 	}
-	err = s.MessageReactionsRemoveAll(v.ChannelID, v.MsgID)
+	delete(VotesRunning, v.ID)
 	return err
 }
