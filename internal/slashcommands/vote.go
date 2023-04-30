@@ -30,7 +30,7 @@ func (c *Vote) Description() string {
 }
 
 func (c *Vote) Version() string {
-	return "1.0.0"
+	return "1.1.0"
 }
 
 func (c *Vote) Type() discordgo.ApplicationCommandType {

@@ -1,4 +1,4 @@
-package models
+package config
 
 import "github.com/zekurio/daemon/internal/util/static"
 

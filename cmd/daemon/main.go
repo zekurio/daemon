@@ -7,12 +7,10 @@ import (
 	"syscall"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/zekrotja/ken"
-	"github.com/zekurio/daemon/internal/inits"
-	"github.com/zekurio/daemon/internal/models"
-
 	"github.com/charmbracelet/log"
 	"github.com/sarulabs/di/v2"
+	"github.com/zekrotja/ken"
+	"github.com/zekurio/daemon/internal/inits"
 	"github.com/zekurio/daemon/internal/services/config"
 	"github.com/zekurio/daemon/internal/services/database"
 	"github.com/zekurio/daemon/internal/services/permissions"
@@ -43,7 +41,7 @@ func main() {
 	err = diBuilder.Add(di.Def{
 		Name: static.DiConfig,
 		Build: func(ctn di.Container) (interface{}, error) {
-			return config.Parse(*flagConfigPath, "DAEMON_", models.DefaultConfig)
+			return config.Parse(*flagConfigPath, "DAEMON_", config.DefaultConfig)
 		},
 	})
 	if err != nil {
@@ -120,6 +118,17 @@ func main() {
 	})
 	if err != nil {
 		log.With(err).Fatal("Scheduler creation failed")
+	}
+
+	// Code Executor
+	err = diBuilder.Add(di.Def{
+		Name: static.DiCodeexec,
+		Build: func(ctn di.Container) (interface{}, error) {
+			return inits.InitCodeexec(ctn), nil
+		},
+	})
+	if err != nil {
+		log.With(err).Fatal("Code executor creation failed")
 	}
 
 	// Build dependency injection container

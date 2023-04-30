@@ -19,6 +19,12 @@ type Database interface {
 	GetAutoVoice(guildID string) ([]string, error)
 	SetAutoVoice(guildID string, channelIDs []string) error
 
+	GetExecEnabled(guildID string) (bool, error)
+	SetExecEnabled(guildID string, enabled bool) error
+
+	GetJDoodleKey(guildID string) (string, error)
+	SetJDoodleKey(guildID, key string) error
+
 	// Permissions
 
 	GetPermissions(guildID string) (map[string]perms.Array, error)

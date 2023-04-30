@@ -3,13 +3,13 @@ package postgres
 import (
 	"database/sql"
 	"fmt"
+	"github.com/zekurio/daemon/internal/services/config"
 	"strings"
 
 	"github.com/charmbracelet/log"
 	_ "github.com/lib/pq"
 	"github.com/pressly/goose/v3"
 
-	"github.com/zekurio/daemon/internal/models"
 	"github.com/zekurio/daemon/internal/services/database"
 	"github.com/zekurio/daemon/internal/services/database/dberr"
 	"github.com/zekurio/daemon/internal/util/autovoice"
@@ -27,7 +27,7 @@ var (
 	guildTables                   = []string{"guilds", "permissions"}
 )
 
-func InitPostgres(c models.PostgresConfig) (*Postgres, error) {
+func InitPostgres(c config.PostgresConfig) (*Postgres, error) {
 	var (
 		p   Postgres
 		err error
@@ -98,6 +98,22 @@ func (p *Postgres) GetAutoVoice(guildID string) ([]string, error) {
 
 func (p *Postgres) SetAutoVoice(guildID string, channelIDs []string) error {
 	return SetValue(p, "guilds", "autovoice_ids", strings.Join(channelIDs, ","), "guild_id", guildID)
+}
+
+func (p *Postgres) GetExecEnabled(guildID string) (bool, error) {
+	return GetValue[bool](p, "guilds", "exec_enabled", "guild_id", guildID)
+}
+
+func (p *Postgres) SetExecEnabled(guildID string, enabled bool) error {
+	return SetValue(p, "guilds", "exec_enabled", enabled, "guild_id", guildID)
+}
+
+func (p *Postgres) GetJDoodleKey(guildID string) (string, error) {
+	return GetValue[string](p, "guilds", "jdoodle_key", "guild_id", guildID)
+}
+
+func (p *Postgres) SetJDoodleKey(guildID, key string) error {
+	return SetValue(p, "guilds", "jdoodle_key", key, "guild_id", guildID)
 }
 
 // PERMISSIONS
