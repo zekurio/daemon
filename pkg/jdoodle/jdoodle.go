@@ -1,6 +1,12 @@
 package jdoodle
 
-import "github.com/zekurio/daemon/pkg/httputils"
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"io/ioutil"
+	"net/http"
+)
 
 var (
 	// BaseURL is the base url for the jdoodle api
@@ -31,16 +37,39 @@ func (w *Wrapper) Execute(language, script string) (result *ExecResponse, err er
 	url := BaseURL + "/execute"
 	result = &ExecResponse{}
 
-	res, err := httputils.Post(url, nil, payload)
+	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
-		return
+		return nil, err
 	}
-	defer res.Release()
 
-	err = res.JSON(result)
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 
-	return
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.New("execute request failed with status code " + resp.Status)
+	}
+
+	respBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.Unmarshal(respBytes, result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 // Credits returns the amount of credits left for the client
@@ -53,13 +82,37 @@ func (w *Wrapper) Credits() (result *CreditsResponse, err error) {
 	url := BaseURL + "/credits"
 	result = &CreditsResponse{}
 
-	res, err := httputils.Post(url, nil, payload)
+	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
-		return
+		return nil, err
 	}
-	defer res.Release()
 
-	err = res.JSON(result)
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 
-	return
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.New("credits request failed with status code " + resp.Status)
+	}
+
+	respBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.Unmarshal(respBytes, result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }

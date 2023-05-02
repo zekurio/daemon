@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"github.com/bwmarrin/discordgo"
 	"github.com/zekrotja/ken"
-	"github.com/zekurio/daemon/internal/services/codeexec"
 	"github.com/zekurio/daemon/internal/services/database"
 	"github.com/zekurio/daemon/internal/services/permissions"
 	"github.com/zekurio/daemon/internal/util/static"
+	"github.com/zekurio/daemon/pkg/jdoodle"
 	"strings"
 )
 
@@ -54,7 +54,6 @@ func (c *Exec) Run(ctx ken.Context) (err error) {
 		return
 	}
 
-	exec := ctx.Get(static.DiCodeexec).(codeexec.ExecutorWrapper)
 	db := ctx.Get(static.DiDatabase).(database.Database)
 
 	ok, err := db.GetExecEnabled(ctx.GetEvent().GuildID)
@@ -62,14 +61,9 @@ func (c *Exec) Run(ctx ken.Context) (err error) {
 		return
 	}
 
-	// check if jdoodle is enabled
+	// check if wrapper is enabled
 	if !ok {
 		err = ctx.FollowUpError("JDoodle is not enabled", "").Send().Error
-		return
-	}
-
-	jdoodle, err := exec.NewExecutor(ctx.GetEvent().GuildID)
-	if err != nil {
 		return
 	}
 
@@ -90,42 +84,39 @@ func (c *Exec) Run(ctx ken.Context) (err error) {
 		return
 	}
 
-	p := codeexec.Payload{
-		Language: lang,
-		Code:     code,
-	}
-
-	// execute code
-	res, err := jdoodle.Execute(p)
+	creds, err := db.GetJDoodleKey(ctx.GetEvent().GuildID)
 	if err != nil {
-		err = ctx.FollowUpError("Failed to execute code", "").Send().Error
 		return
 	}
 
-	if res.StdErr != "" {
-		err = ctx.FollowUpError("An error occurred: "+res.StdErr, "").Send().Error
+	split := strings.Split(creds, "::")
+
+	wrapper := jdoodle.New(split[0], split[1])
+
+	output, err := wrapper.Execute(lang, code)
+	if err != nil {
+		err = ctx.FollowUpError("Error executing code", "").Send().Error
 		return
 	}
 
-	// send result
 	err = ctx.FollowUpEmbed(&discordgo.MessageEmbed{
-		Title: "Result",
-		// either use StdErr or StdOut, depending on if there was an error
-		Description: fmt.Sprintf("```%s```", res.StdOut),
+		Title:       "JDoodle Output",
+		Description: "```\n" + output.Output + "\n```",
 		Fields: []*discordgo.MessageEmbedField{
 			{
 				Name:  "Memory",
-				Value: res.MemUsed + " bytes",
+				Value: output.Memory,
 			},
 			{
 				Name:  "CPU Time",
-				Value: res.CPUTime + " seconds",
+				Value: output.CPUTime,
 			},
 			{
-				Name:  "Execute time",
-				Value: fmt.Sprintf("%d ms", res.ExecTime),
+				Name:  "Status",
+				Value: fmt.Sprintf("%d", output.Status),
 			},
 		},
+		Color: static.ColorCyan,
 	}).Send().Error
 
 	return

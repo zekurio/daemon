@@ -120,17 +120,6 @@ func main() {
 		log.With(err).Fatal("Scheduler creation failed")
 	}
 
-	// Code Executor
-	err = diBuilder.Add(di.Def{
-		Name: static.DiCodeexec,
-		Build: func(ctn di.Container) (interface{}, error) {
-			return inits.InitCodeexec(ctn), nil
-		},
-	})
-	if err != nil {
-		log.With(err).Fatal("Code executor creation failed")
-	}
-
 	// Build dependency injection container
 	ctn := diBuilder.Build()
 	// Tear down dependency instances
