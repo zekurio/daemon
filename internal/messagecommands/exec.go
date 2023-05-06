@@ -1,7 +1,6 @@
 package messagecommands
 
 import (
-	"fmt"
 	"github.com/bwmarrin/discordgo"
 	"github.com/zekrotja/ken"
 	"github.com/zekurio/daemon/internal/services/database"
@@ -113,7 +112,7 @@ func (c *Exec) Run(ctx ken.Context) (err error) {
 			},
 			{
 				Name:  "Status",
-				Value: fmt.Sprintf("%d", output.Status),
+				Value: output.Status,
 			},
 		},
 		Color: static.ColorCyan,
