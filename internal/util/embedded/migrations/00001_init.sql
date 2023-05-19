@@ -27,9 +27,9 @@ CREATE TABLE IF NOT EXISTS votes
 
 CREATE TABLE IF NOT EXISTS autovoice
 (
-    id        VARCHAR(25) NOT NULL DEFAULT '',
+    guild_id        VARCHAR(25) NOT NULL DEFAULT '',
     json_data TEXT        NOT NULL,
-    PRIMARY KEY (id)
+    PRIMARY KEY (guild_id)
 );
 
 -- +goose Down
