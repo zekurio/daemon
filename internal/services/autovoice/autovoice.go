@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/gob"
+
 	"github.com/bwmarrin/discordgo"
 	"github.com/zekurio/daemon/internal/services/database"
 	"github.com/zekurio/daemon/pkg/discordutils"
@@ -11,9 +12,18 @@ import (
 
 // AutovoiceHandler is the struct that handles the autovoice service
 type AutovoiceHandler struct {
-	db     *database.Database
+	db     database.Database
 	s      *discordgo.Session
 	guilds map[string]*GuildMap
+}
+
+// NewAutovoiceHandler creates a new autovoice handler
+func NewAutovoiceHandler(db database.Database, s *discordgo.Session) *AutovoiceHandler {
+	return &AutovoiceHandler{
+		db:     db,
+		s:      s,
+		guilds: make(map[string]*GuildMap),
+	}
 }
 
 type GuildMap map[string]*AVChannel
@@ -25,7 +35,7 @@ type AVChannel struct {
 	CreatedChannelID string
 }
 
-// Unmarshal decodes a string into a GuildMap
+// Unmarshal decodes a string into a GuildMap, this is used to get the guild map from the database
 func Unmarshal(data string) (g GuildMap, err error) {
 	rawData, err := base64.StdEncoding.DecodeString(data)
 	if err != nil {
@@ -43,7 +53,7 @@ func Unmarshal(data string) (g GuildMap, err error) {
 	return
 }
 
-// Marshal encodes a GuildMap into a string
+// Marshal encodes a GuildMap into a string, this is used to store the guild map in the database
 func Marshal(g GuildMap) (data string, err error) {
 	var buffer bytes.Buffer
 	gobenc := gob.NewEncoder(&buffer)
@@ -59,7 +69,6 @@ func Marshal(g GuildMap) (data string, err error) {
 }
 
 // AddGuild adds a guild to the guild map to be used later on
-// TODO populate the guild maps on startup
 func (h *AutovoiceHandler) AddGuild(guildID string) {
 	h.guilds[guildID] = &GuildMap{}
 }
@@ -115,8 +124,19 @@ func (h *AutovoiceHandler) CreateChannel(guildID, ownerID, parentID string) (a *
 	return
 }
 
-// DeleteChannel deletes an autovoice channel and removes it from the guild map
+// DeleteChannel deletes an autovoice channel and removes it from the guild map, it does
+// not delete the channel if there are still people in it
 func (h *AutovoiceHandler) DeleteChannel(guildID, channelID string) (err error) {
+	// check if there are still people in the channel
+	members, err := discordutils.GetVoiceMembers(h.s, guildID, channelID)
+	if err != nil {
+		return
+	}
+
+	if len(members) > 0 {
+		return h.SwapOwner(members[0].GuildID, members[0].User.ID, channelID)
+	}
+
 	_, err = h.s.ChannelDelete(channelID)
 	if err != nil {
 		return
