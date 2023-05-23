@@ -1,7 +1,6 @@
 package database
 
 import (
-	"github.com/zekurio/daemon/internal/util/autovoice"
 	"github.com/zekurio/daemon/internal/util/vote"
 	"github.com/zekurio/daemon/pkg/perms"
 )
@@ -19,12 +18,6 @@ type Database interface {
 	GetAutoVoice(guildID string) ([]string, error)
 	SetAutoVoice(guildID string, channelIDs []string) error
 
-	GetExecEnabled(guildID string) (bool, error)
-	SetExecEnabled(guildID string, enabled bool) error
-
-	GetJDoodleKey(guildID string) (string, error)
-	SetJDoodleKey(guildID, key string) error
-
 	// Permissions
 
 	GetPermissions(guildID string) (map[string]perms.Array, error)
@@ -36,11 +29,7 @@ type Database interface {
 	AddUpdateVote(vote vote.Vote) error
 	DeleteVote(voteID string) error
 
-	// Auto voice
-
-	GetAVChannels() (map[string]autovoice.AVChannel, error)
-	AddUpdateAVChannel(avc autovoice.AVChannel) error
-	DeleteAVChannel(channelID string) error
+	// TODO Auto voice
 
 	// Data management
 

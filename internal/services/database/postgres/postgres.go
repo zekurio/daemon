@@ -3,8 +3,9 @@ package postgres
 import (
 	"database/sql"
 	"fmt"
-	"github.com/zekurio/daemon/internal/services/config"
 	"strings"
+
+	"github.com/zekurio/daemon/internal/services/config"
 
 	"github.com/charmbracelet/log"
 	_ "github.com/lib/pq"
@@ -12,7 +13,6 @@ import (
 
 	"github.com/zekurio/daemon/internal/services/database"
 	"github.com/zekurio/daemon/internal/services/database/dberr"
-	"github.com/zekurio/daemon/internal/util/autovoice"
 	"github.com/zekurio/daemon/internal/util/embedded"
 	"github.com/zekurio/daemon/internal/util/vote"
 	"github.com/zekurio/daemon/pkg/perms"
@@ -98,22 +98,6 @@ func (p *Postgres) GetAutoVoice(guildID string) ([]string, error) {
 
 func (p *Postgres) SetAutoVoice(guildID string, channelIDs []string) error {
 	return SetValue(p, "guilds", "autovoice_ids", strings.Join(channelIDs, ","), "guild_id", guildID)
-}
-
-func (p *Postgres) GetExecEnabled(guildID string) (bool, error) {
-	return GetValue[bool](p, "guilds", "exec_enabled", "guild_id", guildID)
-}
-
-func (p *Postgres) SetExecEnabled(guildID string, enabled bool) error {
-	return SetValue(p, "guilds", "exec_enabled", enabled, "guild_id", guildID)
-}
-
-func (p *Postgres) GetJDoodleKey(guildID string) (string, error) {
-	return GetValue[string](p, "guilds", "jdoodle_key", "guild_id", guildID)
-}
-
-func (p *Postgres) SetJDoodleKey(guildID, key string) error {
-	return SetValue(p, "guilds", "jdoodle_key", key, "guild_id", guildID)
 }
 
 // PERMISSIONS
@@ -208,48 +192,7 @@ func (p *Postgres) DeleteVote(voteID string) error {
 	return err
 }
 
-// AUTOVOICE
-
-func (p *Postgres) GetAVChannels() (map[string]autovoice.AVChannel, error) {
-
-	rows, err := p.db.Query(`SELECT id, json_data FROM autovoice`)
-	if err != nil {
-		return nil, p.wrapErr(err)
-	}
-
-	var results = make(map[string]autovoice.AVChannel)
-	for rows.Next() {
-		var avID, rawData string
-		err := rows.Scan(&avID, &rawData)
-		if err != nil {
-			continue
-		}
-		av, err := autovoice.Unmarshal(rawData)
-		if err != nil {
-			p.DeleteAVChannel(rawData)
-		} else {
-			results[av.CreatedChannelID] = av
-		}
-
-	}
-
-	return results, nil
-
-}
-
-func (p *Postgres) AddUpdateAVChannel(av autovoice.AVChannel) error {
-	rawData, err := autovoice.Marshal(av)
-	if err != nil {
-		return err
-	}
-	_, err = p.db.Exec(`INSERT INTO autovoice (id, json_data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET json_data = $2`, av.CreatedChannelID, rawData)
-	return err
-}
-
-func (p *Postgres) DeleteAVChannel(channelID string) error {
-	_, err := p.db.Exec(`DELETE FROM autovoice WHERE id = $1`, channelID)
-	return err
-}
+// TODO AUTOVOICE
 
 // DATA MANAGEMENT
 

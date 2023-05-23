@@ -2,7 +2,6 @@ package inits
 
 import (
 	"fmt"
-	"github.com/zekurio/daemon/internal/messagecommands"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/charmbracelet/log"
@@ -44,13 +43,9 @@ func InitKen(ctn di.Container) (*ken.Ken, error) {
 		new(slashcommands.Guild),
 		new(slashcommands.Perms),
 		new(slashcommands.Vote),
-		new(slashcommands.ExecSetup),
 
 		// usercommands
 		new(usercommands.About),
-
-		// messagecommands
-		new(messagecommands.Exec),
 	)
 	if err != nil {
 		return nil, err

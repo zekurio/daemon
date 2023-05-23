@@ -10,7 +10,6 @@ import (
 
 	"github.com/zekurio/daemon/internal/services/database"
 	"github.com/zekurio/daemon/internal/services/scheduler"
-	"github.com/zekurio/daemon/internal/util/autovoice"
 	"github.com/zekurio/daemon/internal/util/static"
 	"github.com/zekurio/daemon/internal/util/vote"
 	"github.com/zekurio/daemon/pkg/discordutils"
@@ -61,36 +60,4 @@ func (l *ListenerReady) Handler(s *discordgo.Session, e *discordgo.Ready) {
 	if err != nil {
 		log.Error("Failed scheduling vote cleanup: %s", err.Error())
 	}
-
-	autovoices, err := l.db.GetAVChannels()
-	if err != nil {
-	} else {
-		autovoice.ActiveChannels = autovoices
-		for _, av := range autovoice.ActiveChannels {
-			members, err := discordutils.GetVoiceMembers(s, av.GuildID, av.CreatedChannelID)
-			if err != nil || len(members) == 0 {
-				if err = l.db.DeleteAVChannel(av.CreatedChannelID); err != nil {
-					log.Error("Failed deleting AV channel from database: %s", err.Error())
-				}
-
-				if _, err = s.ChannelDelete(av.CreatedChannelID); err != nil {
-					log.Error("Failed deleting AV channel: %s", err.Error())
-				}
-			} else {
-				ownerInChannel := false
-				for _, m := range members {
-					if m.User.ID == av.OwnerID {
-						ownerInChannel = true
-						break
-					}
-				}
-				if !ownerInChannel {
-					if err = av.SwitchOwner(s, members); err != nil {
-						log.Error("Failed switching AV channel owner: %s", err.Error())
-					}
-				}
-			}
-		}
-	}
-
 }
