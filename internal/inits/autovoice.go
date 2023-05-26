@@ -10,10 +10,10 @@ import (
 
 func InitAutvoice(ctn di.Container) *autovoice.AutovoiceHandler {
 
-	db := ctn.Get(static.DiDatabase).(database.Database)
-	s := ctn.Get(static.DiDiscord).(*discordgo.Session)
+	_ = ctn.Get(static.DiDatabase).(database.Database)
+	_ = ctn.Get(static.DiDiscord).(*discordgo.Session)
 
 	// TODO populate guilds map with data from database
 
-	return autovoice.NewAutovoiceHandler(db, s)
+	return nil
 }

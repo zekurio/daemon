@@ -1,6 +1,7 @@
 package database
 
 import (
+	"github.com/zekurio/daemon/internal/models"
 	"github.com/zekurio/daemon/internal/util/vote"
 	"github.com/zekurio/daemon/pkg/perms"
 )
@@ -30,6 +31,11 @@ type Database interface {
 	DeleteVote(voteID string) error
 
 	// TODO Auto voice
+
+	GetGuildMap(guildID string) (models.GuildMap, error)
+	AddUpdateGuildMap(guildID string, guildMap models.GuildMap) error
+	GetAllGuildMaps() (map[string]models.GuildMap, error)
+	DeleteGuildMap(guildID string) error
 
 	// Data management
 

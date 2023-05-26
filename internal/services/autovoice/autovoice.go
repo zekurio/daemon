@@ -1,11 +1,10 @@
 package autovoice
 
 import (
-	"bytes"
-	"encoding/base64"
-	"encoding/gob"
+	"errors"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/zekurio/daemon/internal/models"
 	"github.com/zekurio/daemon/internal/services/database"
 	"github.com/zekurio/daemon/pkg/discordutils"
 )
@@ -14,67 +13,20 @@ import (
 type AutovoiceHandler struct {
 	db     database.Database
 	s      *discordgo.Session
-	guilds map[string]*GuildMap
+	guilds map[string]*models.GuildMap
 }
 
-// NewAutovoiceHandler creates a new autovoice handler
-func NewAutovoiceHandler(db database.Database, s *discordgo.Session) *AutovoiceHandler {
-	return &AutovoiceHandler{
-		db:     db,
-		s:      s,
-		guilds: make(map[string]*GuildMap),
-	}
-}
-
-type GuildMap map[string]*AVChannel
-
-type AVChannel struct {
-	GuildID          string
-	OwnerID          string
-	OriginChannelID  string
-	CreatedChannelID string
-}
-
-// Unmarshal decodes a string into a GuildMap, this is used to get the guild map from the database
-func Unmarshal(data string) (g GuildMap, err error) {
-	rawData, err := base64.StdEncoding.DecodeString(data)
-	if err != nil {
-		return
-	}
-
-	buffer := bytes.NewBuffer(rawData)
-	gobdec := gob.NewDecoder(buffer)
-
-	err = gobdec.Decode(&g)
-	if err != nil {
-		return
-	}
-
-	return
-}
-
-// Marshal encodes a GuildMap into a string, this is used to store the guild map in the database
-func Marshal(g GuildMap) (data string, err error) {
-	var buffer bytes.Buffer
-	gobenc := gob.NewEncoder(&buffer)
-
-	err = gobenc.Encode(g)
-	if err != nil {
-		return
-	}
-
-	data = base64.StdEncoding.EncodeToString(buffer.Bytes())
-
-	return
-}
+var _ AutovoiceProvider = (*AutovoiceHandler)(nil)
 
 // AddGuild adds a guild to the guild map to be used later on
-func (h *AutovoiceHandler) AddGuild(guildID string) {
-	h.guilds[guildID] = &GuildMap{}
+func (h *AutovoiceHandler) AddGuild(guildID string) error {
+	h.guilds[guildID] = &models.GuildMap{}
+
+	return nil
 }
 
 // CreateChannel creates a new autovoice channel and adds it to the guild map
-func (h *AutovoiceHandler) CreateChannel(guildID, ownerID, parentID string) (a *AVChannel, err error) {
+func (h *AutovoiceHandler) CreateChannel(guildID, ownerID, parentID string) (a *models.AVChannel, err error) {
 	var (
 		chName string
 		pCh    *discordgo.Channel
@@ -106,7 +58,7 @@ func (h *AutovoiceHandler) CreateChannel(guildID, ownerID, parentID string) (a *
 		return
 	}
 
-	a = &AVChannel{
+	a = &models.AVChannel{
 		GuildID:          guildID,
 		OwnerID:          ownerID,
 		OriginChannelID:  parentID,
@@ -182,4 +134,26 @@ func (h *AutovoiceHandler) SwapOwner(guildID, newOwner, channelID string) (err e
 	}
 
 	return
+}
+
+// GetChannelFromOrigin returns the AVChannel struct from the guild map based on the origin channel ID
+func (h *AutovoiceHandler) GetChannelFromOrigin(guildID, originID string) (*models.AVChannel, error) {
+	for _, v := range *h.guilds[guildID] {
+		if v.OriginChannelID == originID {
+			return v, nil
+		}
+	}
+
+	return nil, errors.New("channel not found")
+}
+
+// GetChannelFromOwner returns the AVChannel struct from the guild map based on the owner ID
+func (h *AutovoiceHandler) GetChannelFromOwner(guildID, ownerID string) (*models.AVChannel, error) {
+	for _, v := range *h.guilds[guildID] {
+		if v.OwnerID == ownerID {
+			return v, nil
+		}
+	}
+
+	return nil, errors.New("channel not found")
 }

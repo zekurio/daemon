@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/zekurio/daemon/internal/models"
 	"github.com/zekurio/daemon/internal/services/config"
+	"github.com/zekurio/daemon/internal/util"
 
 	"github.com/charmbracelet/log"
 	_ "github.com/lib/pq"
@@ -146,13 +148,11 @@ func (p *Postgres) SetPermissions(guildID, roleID string, perms perms.Array) err
 	}
 
 	return nil
-
 }
 
 // VOTES
 
 func (p *Postgres) GetVotes() (map[string]vote.Vote, error) {
-
 	rows, err := p.db.Query(`SELECT id, json_data FROM votes`)
 	if err != nil {
 		return nil, p.wrapErr(err)
@@ -175,7 +175,6 @@ func (p *Postgres) GetVotes() (map[string]vote.Vote, error) {
 	}
 
 	return results, nil
-
 }
 
 func (p *Postgres) AddUpdateVote(v vote.Vote) error {
@@ -192,7 +191,63 @@ func (p *Postgres) DeleteVote(voteID string) error {
 	return err
 }
 
-// TODO AUTOVOICE
+// AUTOVOICE
+
+func (p *Postgres) GetGuildMap(guildID string) (models.GuildMap, error) {
+	var rawData string
+
+	err := p.db.QueryRow(`SELECT json_data FROM autovoice WHERE guild_id = $1`, guildID).Scan(&rawData)
+	if err != nil {
+		return nil, p.wrapErr(err)
+	}
+
+	result, err := util.Unmarshal[models.GuildMap](rawData)
+	if err != nil {
+		p.DeleteVote(guildID)
+	}
+
+	return result, nil
+}
+
+func (p *Postgres) AddUpdateGuildMap(guildID string, guildMap models.GuildMap) error {
+	rawData, err := util.Marshal(guildMap)
+	if err != nil {
+		return err
+	}
+
+	_, err = p.db.Exec(`INSERT INTO autovoice (guild_id, json_data) VALUES ($1, $2) ON CONFLICT (guild_id) DO UPDATE SET json_data = $2`, guildID, rawData)
+	return err
+}
+
+func (p *Postgres) GetAllGuildMaps() (map[string]models.GuildMap, error) {
+	rows, err := p.db.Query(`SELECT guild_id, json_data FROM autovoice`)
+	if err != nil {
+		return nil, p.wrapErr(err)
+	}
+
+	var results = make(map[string]models.GuildMap)
+	for rows.Next() {
+		var guildID, rawData string
+		err := rows.Scan(&guildID, &rawData)
+		if err != nil {
+			continue
+		}
+		guildMap, err := util.Unmarshal[models.GuildMap](rawData)
+		if err != nil {
+			p.DeleteGuildMap(guildID)
+		} else {
+			results[guildID] = guildMap
+		}
+
+	}
+
+	return results, nil
+}
+
+func (p *Postgres) DeleteGuildMap(guildID string) error {
+	_, err := p.db.Exec(`DELETE FROM autovoice WHERE guild_id = $1`, guildID)
+	return err
+}
 
 // DATA MANAGEMENT
 
