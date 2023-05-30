@@ -2,7 +2,7 @@ package listeners
 
 import (
 	"fmt"
-	"github.com/zekurio/daemon/internal/services/config"
+	"github.com/zekurio/daemon/internal/models"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -15,13 +15,13 @@ import (
 )
 
 type ListenerGuilds struct {
-	cfg config.Config
+	cfg models.Config
 	db  database.Database
 }
 
 func NewListenerGuilds(ctn di.Container) *ListenerGuilds {
 	return &ListenerGuilds{
-		cfg: ctn.Get(static.DiConfig).(config.Config),
+		cfg: ctn.Get(static.DiConfig).(models.Config),
 		db:  ctn.Get(static.DiDatabase).(database.Database),
 	}
 }

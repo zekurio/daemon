@@ -6,13 +6,11 @@ import (
 	"strings"
 
 	"github.com/zekurio/daemon/internal/models"
-	"github.com/zekurio/daemon/internal/services/config"
 	"github.com/zekurio/daemon/internal/util"
 
 	"github.com/charmbracelet/log"
 	_ "github.com/lib/pq"
 	"github.com/pressly/goose/v3"
-
 	"github.com/zekurio/daemon/internal/services/database"
 	"github.com/zekurio/daemon/internal/services/database/dberr"
 	"github.com/zekurio/daemon/internal/util/embedded"
@@ -29,7 +27,7 @@ var (
 	guildTables                   = []string{"guilds", "permissions"}
 )
 
-func InitPostgres(c config.PostgresConfig) (*Postgres, error) {
+func InitPostgres(c models.PostgresConfig) (*Postgres, error) {
 	var (
 		p   Postgres
 		err error
@@ -52,7 +50,10 @@ func InitPostgres(c config.PostgresConfig) (*Postgres, error) {
 	}
 
 	goose.SetBaseFS(embedded.Migrations)
-	goose.SetDialect("postgres")
+	err = goose.SetDialect("postgres")
+	if err != nil {
+		return nil, err
+	}
 	goose.SetLogger(log.StandardLog())
 	err = goose.Up(p.db, "migrations")
 	if err != nil {
@@ -257,7 +258,7 @@ func (p *Postgres) FlushGuildData(guildID string) error {
 
 		var (
 			err          error
-			failedGuilds = []string{}
+			failedGuilds []string
 		)
 
 		for _, table := range guildTables {

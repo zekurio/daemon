@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"github.com/zekurio/daemon/internal/models"
 	"os"
 	"os/signal"
 	"syscall"
@@ -41,7 +42,7 @@ func main() {
 	err = diBuilder.Add(di.Def{
 		Name: static.DiConfig,
 		Build: func(ctn di.Container) (interface{}, error) {
-			return config.Parse(*flagConfigPath, "DAEMON_", config.DefaultConfig)
+			return config.Parse(*flagConfigPath, "DAEMON_", models.DefaultConfig)
 		},
 	})
 	if err != nil {

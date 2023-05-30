@@ -3,13 +3,13 @@ package middlewares
 import (
 	"github.com/sarulabs/di/v2"
 	"github.com/zekrotja/ken"
-	"github.com/zekurio/daemon/internal/services/config"
+	"github.com/zekurio/daemon/internal/models"
 	"github.com/zekurio/daemon/internal/util/static"
 	"github.com/zekurio/daemon/pkg/arrayutils"
 )
 
 type DisableCommandsMiddleware struct {
-	cfg config.Config
+	cfg models.Config
 }
 
 var (
@@ -18,7 +18,7 @@ var (
 
 func NewDisableCommandsMiddleware(ctn di.Container) *DisableCommandsMiddleware {
 	return &DisableCommandsMiddleware{
-		cfg: ctn.Get(static.DiConfig).(config.Config),
+		cfg: ctn.Get(static.DiConfig).(models.Config),
 	}
 }
 

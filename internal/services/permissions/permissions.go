@@ -1,7 +1,7 @@
 package permissions
 
 import (
-	"github.com/zekurio/daemon/internal/services/config"
+	"github.com/zekurio/daemon/internal/models"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
@@ -18,7 +18,7 @@ import (
 
 type Permissions struct {
 	db  database.Database
-	cfg config.Config
+	cfg models.Config
 	s   *discordgo.Session
 }
 
@@ -27,7 +27,7 @@ var _ PermsProvider = (*Permissions)(nil)
 func InitPermissions(ctn di.Container) *Permissions {
 	return &Permissions{
 		db:  ctn.Get(static.DiDatabase).(database.Database),
-		cfg: ctn.Get(static.DiConfig).(config.Config),
+		cfg: ctn.Get(static.DiConfig).(models.Config),
 		s:   ctn.Get(static.DiDiscord).(*discordgo.Session),
 	}
 }
