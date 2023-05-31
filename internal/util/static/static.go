@@ -17,17 +17,14 @@ const (
 	InvitePermission = discordgo.PermissionEmbedLinks |
 		discordgo.PermissionManageRoles |
 		discordgo.PermissionManageChannels |
-		discordgo.PermissionVoiceMoveMembers |
-		discordgo.PermissionViewChannel
+		discordgo.PermissionVoiceMoveMembers
 
 	Intents = discordgo.IntentsGuilds |
 		discordgo.IntentsDirectMessages |
 		discordgo.IntentsGuildEmojis |
 		discordgo.IntentsGuildMembers |
 		discordgo.IntentsGuildVoiceStates |
-		discordgo.IntentsGuildMessages |
-		discordgo.IntentsDirectMessages |
-		discordgo.IntentsMessageContent
+		discordgo.IntentsDirectMessages
 )
 
 var (

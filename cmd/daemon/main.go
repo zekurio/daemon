@@ -2,8 +2,6 @@ package main
 
 import (
 	"flag"
-	"github.com/zekurio/daemon/internal/models"
-	"github.com/zekurio/daemon/internal/services/autovoice"
 	"os"
 	"os/signal"
 	"syscall"
@@ -12,7 +10,10 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/sarulabs/di/v2"
 	"github.com/zekrotja/ken"
+
 	"github.com/zekurio/daemon/internal/inits"
+	"github.com/zekurio/daemon/internal/models"
+	"github.com/zekurio/daemon/internal/services/autovoice"
 	"github.com/zekurio/daemon/internal/services/config"
 	"github.com/zekurio/daemon/internal/services/database"
 	"github.com/zekurio/daemon/internal/services/permissions"
