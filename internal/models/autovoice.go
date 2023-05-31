@@ -7,4 +7,5 @@ type AVChannel struct {
 	OwnerID          string
 	OriginChannelID  string
 	CreatedChannelID string
+	Members          []string
 }

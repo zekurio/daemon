@@ -24,13 +24,13 @@ type Database interface {
 	GetPermissions(guildID string) (map[string]perms.Array, error)
 	SetPermissions(guildID, roleID string, perms perms.Array) error
 
-	// Votes
+	// TODO Votes
 
 	GetVotes() (map[string]vote.Vote, error)
 	AddUpdateVote(vote vote.Vote) error
 	DeleteVote(voteID string) error
 
-	// TODO Auto voice
+	// AutoVoice
 
 	GetGuildMap(guildID string) (models.GuildMap, error)
 	AddUpdateGuildMap(guildID string, guildMap models.GuildMap) error

@@ -7,5 +7,5 @@ const (
 	DiCommandHandler = "di-commandhandler"
 	DiPermissions    = "di-permissions"
 	DiScheduler      = "di-scheduler"
-	DiCodeexec       = "di-codeexec"
+	DiAutovoice      = "di-autovoice"
 )

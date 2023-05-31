@@ -6,6 +6,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/zekurio/daemon/internal/models"
 	"github.com/zekurio/daemon/internal/services/database"
+	"github.com/zekurio/daemon/pkg/arrayutils"
 	"github.com/zekurio/daemon/pkg/discordutils"
 )
 
@@ -13,16 +14,22 @@ import (
 type AutovoiceHandler struct {
 	db     database.Database
 	s      *discordgo.Session
-	guilds map[string]*models.GuildMap
+	guilds map[string]models.GuildMap
 }
 
 var _ AutovoiceProvider = (*AutovoiceHandler)(nil)
 
-// AddGuild adds a guild to the guild map to be used later on
-func (h *AutovoiceHandler) AddGuild(guildID string) error {
-	h.guilds[guildID] = &models.GuildMap{}
+func NewAutvoiceHandler(db database.Database, s *discordgo.Session) *AutovoiceHandler {
+	return &AutovoiceHandler{
+		db:     db,
+		s:      s,
+		guilds: make(map[string]models.GuildMap),
+	}
+}
 
-	return nil
+// SetGuilds overwrites the complete guilds map with a new one
+func (h *AutovoiceHandler) SetGuilds(guildMap map[string]models.GuildMap) {
+	h.guilds = guildMap
 }
 
 // CreateChannel creates a new autovoice channel and adds it to the guild map
@@ -63,30 +70,28 @@ func (h *AutovoiceHandler) CreateChannel(guildID, ownerID, parentID string) (a *
 		OwnerID:          ownerID,
 		OriginChannelID:  parentID,
 		CreatedChannelID: ch.ID,
+		Members:          []string{ownerID},
 	}
 
-	(*h.guilds[guildID])[ch.ID] = a
+	h.guilds[guildID][ch.ID] = a
 
 	if err := h.s.GuildMemberMove(guildID, ownerID, &ch.ID); err != nil {
 		return nil, err
 	}
 
-	// TODO add to database
-
-	return
+	return a, h.db.AddUpdateGuildMap(guildID, h.guilds[guildID])
 }
 
 // DeleteChannel deletes an autovoice channel and removes it from the guild map, it does
 // not delete the channel if there are still people in it
 func (h *AutovoiceHandler) DeleteChannel(guildID, channelID string) (err error) {
-	// check if there are still people in the channel
-	members, err := discordutils.GetVoiceMembers(h.s, guildID, channelID)
-	if err != nil {
-		return
-	}
+	if len(h.guilds[guildID][channelID].Members) > 1 {
+		newOwner := h.guilds[guildID][channelID].Members[1]
 
-	if len(members) > 0 {
-		return h.SwapOwner(members[0].GuildID, members[0].User.ID, channelID)
+		// swap the owner
+		if err = h.SwapOwner(guildID, newOwner, channelID); err != nil {
+			return err
+		}
 	}
 
 	_, err = h.s.ChannelDelete(channelID)
@@ -94,11 +99,9 @@ func (h *AutovoiceHandler) DeleteChannel(guildID, channelID string) (err error) 
 		return
 	}
 
-	delete(*h.guilds[guildID], channelID)
+	delete(h.guilds[guildID], channelID)
 
-	// TODO delete from database
-
-	return
+	return h.db.AddUpdateGuildMap(guildID, h.guilds[guildID])
 }
 
 // SwapOwner swaps the owner of an autovoice channel
@@ -107,7 +110,7 @@ func (h *AutovoiceHandler) SwapOwner(guildID, newOwner, channelID string) (err e
 		chName string
 	)
 
-	(*h.guilds[guildID])[channelID].OwnerID = newOwner
+	h.guilds[guildID][channelID].OwnerID = newOwner
 
 	// rename channel
 	oUser, err := discordutils.GetMember(h.s, guildID, newOwner)
@@ -115,7 +118,7 @@ func (h *AutovoiceHandler) SwapOwner(guildID, newOwner, channelID string) (err e
 		return
 	}
 
-	pCh, err := discordutils.GetChannel(h.s, (*h.guilds[guildID])[channelID].OriginChannelID)
+	pCh, err := discordutils.GetChannel(h.s, h.guilds[guildID][channelID].OriginChannelID)
 	if err != nil {
 		return
 	}
@@ -133,27 +136,61 @@ func (h *AutovoiceHandler) SwapOwner(guildID, newOwner, channelID string) (err e
 		return
 	}
 
-	return
+	return h.db.AddUpdateGuildMap(guildID, h.guilds[guildID])
 }
 
-// GetChannelFromOrigin returns the AVChannel struct from the guild map based on the origin channel ID
-func (h *AutovoiceHandler) GetChannelFromOrigin(guildID, originID string) (*models.AVChannel, error) {
-	for _, v := range *h.guilds[guildID] {
-		if v.OriginChannelID == originID {
-			return v, nil
+// Deconstruct deconstructs the autovoice service, saves the guild map to the database
+func (h *AutovoiceHandler) Deconstruct() error {
+	for k, v := range h.guilds {
+		if err := h.db.AddUpdateGuildMap(k, v); err != nil {
+			return err
 		}
 	}
 
-	return nil, errors.New("channel not found")
+	return nil
 }
 
 // GetChannelFromOwner returns the AVChannel struct from the guild map based on the owner ID
 func (h *AutovoiceHandler) GetChannelFromOwner(guildID, ownerID string) (*models.AVChannel, error) {
-	for _, v := range *h.guilds[guildID] {
+	for _, v := range h.guilds[guildID] {
 		if v.OwnerID == ownerID {
 			return v, nil
 		}
 	}
 
 	return nil, errors.New("channel not found")
+}
+
+// IsCreatedChannel returns true if the channel ID is a created autovoice channel
+func (h *AutovoiceHandler) IsCreatedChannel(guildID, channelID string) bool {
+	for _, v := range h.guilds[guildID] {
+		if v.CreatedChannelID == channelID {
+			return true
+		}
+	}
+
+	return false
+}
+
+// CurrentChannels returns the currently active autovoice channels in a guild
+func (h *AutovoiceHandler) CurrentChannels(guildID string) (channels []*models.AVChannel, err error) {
+	for _, v := range h.guilds[guildID] {
+		channels = append(channels, v)
+	}
+
+	return
+}
+
+// AddMember adds a member to an autovoice channel
+func (h *AutovoiceHandler) AddMember(guildID, userID, channelID string) (err error) {
+	h.guilds[guildID][channelID].Members = arrayutils.Add(h.guilds[guildID][channelID].Members, userID, -1)
+
+	return h.db.AddUpdateGuildMap(guildID, h.guilds[guildID])
+}
+
+// RemoveMember removes a member from an autovoice channel
+func (h *AutovoiceHandler) RemoveMember(guildID, userID, channelID string) (err error) {
+	h.guilds[guildID][channelID].Members = arrayutils.RemoveLazy(h.guilds[guildID][channelID].Members, userID)
+
+	return h.db.AddUpdateGuildMap(guildID, h.guilds[guildID])
 }

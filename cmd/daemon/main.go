@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"github.com/zekurio/daemon/internal/models"
+	"github.com/zekurio/daemon/internal/services/autovoice"
 	"os"
 	"os/signal"
 	"syscall"
@@ -120,6 +121,17 @@ func main() {
 	if err != nil {
 		log.With(err).Fatal("Scheduler creation failed")
 	}
+
+	// Autovoice
+	err = diBuilder.Add(di.Def{
+		Name: static.DiAutovoice,
+		Build: func(ctn di.Container) (interface{}, error) {
+			return inits.InitAutovoice(ctn), nil
+		},
+		Close: func(obj interface{}) error {
+			return obj.(*autovoice.AutovoiceHandler).Deconstruct()
+		},
+	})
 
 	// Build dependency injection container
 	ctn := diBuilder.Build()
