@@ -5,8 +5,6 @@ CREATE TABLE IF NOT EXISTS guilds
     guild_id      VARCHAR(25) NOT NULL DEFAULT '',
     autorole_ids  text        NOT NULL DEFAULT '',
     autovoice_ids text        NOT NULL DEFAULT '',
-    exec_enabled  BOOLEAN     NOT NULL DEFAULT FALSE,
-    jdoodle_key   text        NOT NULL DEFAULT '',
     PRIMARY KEY (guild_id)
 );
 
