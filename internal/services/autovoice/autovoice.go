@@ -33,8 +33,7 @@ func (h *AutovoiceHandler) SetGuilds(guildMap map[string]models.GuildMap) {
 // CreateChannel creates a new autovoice channel and adds it to the guild map
 func (h *AutovoiceHandler) CreateChannel(s *discordgo.Session, guildID, ownerID, parentID string) (a *models.AVChannel, err error) {
 	var (
-		chName string
-		pCh    *discordgo.Channel
+		pCh *discordgo.Channel
 	)
 
 	pCh, err = s.Channel(parentID)
@@ -47,14 +46,8 @@ func (h *AutovoiceHandler) CreateChannel(s *discordgo.Session, guildID, ownerID,
 		return
 	}
 
-	if oUser.Nick != "" {
-		chName = oUser.Nick + "'s " + pCh.Name
-	} else {
-		chName = oUser.User.Username + "'s " + pCh.Name
-	}
-
 	ch, err := s.GuildChannelCreateComplex(guildID, discordgo.GuildChannelCreateData{
-		Name:     chName,
+		Name:     createChannelName(oUser, pCh.Name),
 		Type:     discordgo.ChannelTypeGuildVoice,
 		ParentID: pCh.ParentID,
 		Position: pCh.Position + 1,
@@ -88,6 +81,10 @@ func (h *AutovoiceHandler) CreateChannel(s *discordgo.Session, guildID, ownerID,
 // DeleteChannel deletes an autovoice channel and removes it from the guild map, it does
 // not delete the channel if there are still people in it
 func (h *AutovoiceHandler) DeleteChannel(s *discordgo.Session, guildID, channelID string) (err error) {
+	if _, ok := h.guilds[guildID][channelID]; !ok {
+		return errors.New("channel not found")
+	}
+
 	if len(h.guilds[guildID][channelID].Members) > 1 {
 		newOwner := h.guilds[guildID][channelID].Members[1]
 
@@ -109,11 +106,9 @@ func (h *AutovoiceHandler) DeleteChannel(s *discordgo.Session, guildID, channelI
 
 // SwapOwner swaps the owner of an autovoice channel
 func (h *AutovoiceHandler) SwapOwner(s *discordgo.Session, guildID, newOwner, channelID string) (err error) {
-	var (
-		chName string
-	)
-
-	h.guilds[guildID][channelID].OwnerID = newOwner
+	if _, ok := h.guilds[guildID][channelID]; !ok {
+		return errors.New("channel not found")
+	}
 
 	// rename channel
 	oUser, err := discordutils.GetMember(s, guildID, newOwner)
@@ -126,14 +121,8 @@ func (h *AutovoiceHandler) SwapOwner(s *discordgo.Session, guildID, newOwner, ch
 		return
 	}
 
-	if oUser.Nick != "" {
-		chName = oUser.Nick + "'s " + pCh.Name
-	} else {
-		chName = oUser.User.Username + "'s " + pCh.Name
-	}
-
 	_, err = s.ChannelEdit(channelID, &discordgo.ChannelEdit{
-		Name: chName,
+		Name: createChannelName(oUser, pCh.Name),
 	})
 	if err != nil {
 		return
@@ -177,6 +166,9 @@ func (h *AutovoiceHandler) IsCreatedChannel(guildID, channelID string) bool {
 
 // IsOwner returns true if the user ID is the owner of an autovoice channel
 func (h *AutovoiceHandler) IsOwner(guildID, userID, channelID string) bool {
+	if _, ok := h.guilds[guildID][channelID]; !ok {
+		return false
+	}
 	return h.guilds[guildID][channelID].OwnerID == userID
 }
 
@@ -191,14 +183,25 @@ func (h *AutovoiceHandler) CurrentChannels(guildID string) (channels []*models.A
 
 // AddMember adds a member to an autovoice channel
 func (h *AutovoiceHandler) AddMember(guildID, userID, channelID string) (err error) {
-	h.guilds[guildID][channelID].Members = arrayutils.Add(h.guilds[guildID][channelID].Members, userID, -1)
+	if ch, ok := h.guilds[guildID][channelID]; ok {
+		ch.Members = arrayutils.Add(ch.Members, userID, -1)
+	}
 
 	return h.db.AddUpdateGuildMap(guildID, h.guilds[guildID])
 }
 
 // RemoveMember removes a member from an autovoice channel
 func (h *AutovoiceHandler) RemoveMember(guildID, userID, channelID string) (err error) {
-	h.guilds[guildID][channelID].Members = arrayutils.RemoveLazy(h.guilds[guildID][channelID].Members, userID)
+	if ch, ok := h.guilds[guildID][channelID]; ok {
+		ch.Members = arrayutils.RemoveLazy(ch.Members, userID)
+	}
 
 	return h.db.AddUpdateGuildMap(guildID, h.guilds[guildID])
+}
+
+func createChannelName(user *discordgo.Member, channelName string) string {
+	if user.Nick != "" {
+		return user.Nick + "'s " + channelName
+	}
+	return user.User.Username + "'s " + channelName
 }

@@ -2,6 +2,7 @@ package slashcommands
 
 import (
 	"fmt"
+	"github.com/zekurio/daemon/internal/middlewares"
 	"strings"
 	"time"
 
@@ -17,8 +18,9 @@ import (
 type Vote struct{}
 
 var (
-	_ ken.SlashCommand         = (*Vote)(nil)
-	_ permissions.CommandPerms = (*Vote)(nil)
+	_ ken.SlashCommand            = (*Vote)(nil)
+	_ permissions.CommandPerms    = (*Vote)(nil)
+	_ middlewares.CommandCooldown = (*Vote)(nil)
 )
 
 func (c *Vote) Name() string {
@@ -125,6 +127,10 @@ func (c *Vote) SubPerms() []permissions.SubCommandPerms {
 			Description: "Allows closing votes of other users.",
 		},
 	}
+}
+
+func (c *Vote) Cooldown() int {
+	return 120
 }
 
 func (c *Vote) Run(ctx ken.Context) (err error) {

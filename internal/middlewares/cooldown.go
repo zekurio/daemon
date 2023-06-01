@@ -2,10 +2,11 @@ package middlewares
 
 import (
 	"github.com/zekrotja/ken"
+	"time"
 )
 
 type CooldownMiddleware struct {
-	cooldowns map[string]map[string]int // map[userID]map[commandName]cooldown
+	cooldowns map[string]map[string]int // map[userID]map[commandName]commandInvokeTime
 }
 
 func NewCooldownMiddleware() *CooldownMiddleware {
@@ -26,23 +27,38 @@ func (m *CooldownMiddleware) Before(ctx *ken.Ctx) (next bool, err error) {
 }
 
 func (m *CooldownMiddleware) isOnCooldown(ctx *ken.Ctx) bool {
-	userID := ctx.User().ID
-	commandName := ctx.Command.Name()
+	var (
+		userID      string
+		commandName string
+		cmdCooldown int
+		now         = time.Now().Second()
+	)
 
+	userID = ctx.User().ID
+	commandName = ctx.Command.Name()
+	if cmd, ok := ctx.Command.(CommandCooldown); ok {
+		cmdCooldown = cmd.Cooldown()
+	} else {
+		return true // no cooldown enabled, so go next
+	}
+
+	// check for nil map
 	if _, ok := m.cooldowns[userID]; !ok {
 		m.cooldowns[userID] = make(map[string]int)
 	}
 
+	// check for nil map
 	if _, ok := m.cooldowns[userID][commandName]; !ok {
-		m.cooldowns[userID][commandName] = 0
+		m.cooldowns[userID][commandName] = now
 	}
 
-	if m.cooldowns[userID][commandName] > 0 {
-		return true
+	// check if cooldown is over
+	if now-m.cooldowns[userID][commandName] <= cmdCooldown {
+		m.cooldowns[userID][commandName] = now // reset cooldown, might be changed in future
+		return false
 	}
 
-	m.cooldowns[userID][commandName] = ctx.Command.(CommandCooldown).Cooldown() // TODO: Add cooldown to command struct
-	return false
+	return true
 }
 
 type CommandCooldown interface {

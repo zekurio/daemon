@@ -33,68 +33,53 @@ func (l *ListenerAutovoice) Handler(s *discordgo.Session, e *discordgo.VoiceStat
 	if err != nil {
 		return
 	}
+
 	idString := strings.Join(ids, ";")
 
-	if vsOld == nil || (vsOld != nil && vsOld.ChannelID == "") { // user joined a channel
+	if vsOld == nil || (vsOld != nil && vsOld.ChannelID == "") { // User joined channel
 
-		// check if user joined a channel that is in the auto voice list
 		if strings.Contains(idString, vsNew.ChannelID) {
-
-			// create a new channel
 			if _, err := l.autovoiceHandler.CreateChannel(s, e.GuildID, e.UserID, vsNew.ChannelID); err != nil {
 				return
 			}
-
 		}
 
-		// check if user joined a created channel to add them to the channel
-		if l.autovoiceHandler.IsCreatedChannel(e.GuildID, vsNew.ChannelID) {
-
-			// add user to the channel
+		if ok := l.autovoiceHandler.IsCreatedChannel(e.GuildID, vsNew.ChannelID); ok {
 			if err := l.autovoiceHandler.AddMember(e.GuildID, e.UserID, vsNew.ChannelID); err != nil {
 				return
 			}
 		}
 
-	} else if (vsOld != nil && vsOld.ChannelID != "") && (vsNew == nil || (vsNew != nil && vsNew.ChannelID == "")) { // user left a channel
+	} else if (vsOld != nil && vsOld.ChannelID != "") && (vsNew == nil && vsNew.ChannelID == "") { // User left channel
 
-		// check if user left a created channel to remove them from the channel
-		if l.autovoiceHandler.IsCreatedChannel(e.GuildID, vsOld.ChannelID) {
-			// remove user from the channel
-			if err := l.autovoiceHandler.RemoveMember(e.GuildID, e.UserID, vsOld.ChannelID); err != nil {
-				return
-			}
-
-			// check if user was owner of the channel
-			if l.autovoiceHandler.IsOwner(e.GuildID, e.UserID, vsOld.ChannelID) {
-				// delete channel
-				if err := l.autovoiceHandler.DeleteChannel(s, e.GuildID, vsOld.ChannelID); err != nil {
-					return
-				}
-			}
+		if err := l.autovoiceHandler.RemoveMember(e.GuildID, e.UserID, vsOld.ChannelID); err != nil {
+			return
 		}
 
-	} else if (vsOld != nil && vsOld.ChannelID != "") && (vsNew != nil && vsNew.ChannelID != "") { // user switched channels
+		// delete channel
+		if err := l.autovoiceHandler.DeleteChannel(s, e.GuildID, vsOld.ChannelID); err != nil {
+			return
+		}
 
-		// check if user left a created channel to remove them from the channel
-		if l.autovoiceHandler.IsCreatedChannel(e.GuildID, vsOld.ChannelID) {
-			// remove user from the channel
-			if err := l.autovoiceHandler.RemoveMember(e.GuildID, e.UserID, vsOld.ChannelID); err != nil {
-				return
-			}
+	} else if (vsOld != nil && vsOld.ChannelID != "") && (vsNew != nil && vsNew.ChannelID != "") { // User switched channel
+		isAVChannel := l.autovoiceHandler.IsCreatedChannel(e.GuildID, vsOld.ChannelID)
 
-			// check if user was owner of the channel
-			if l.autovoiceHandler.IsOwner(e.GuildID, e.UserID, vsOld.ChannelID) {
-				// delete channel
-				if err := l.autovoiceHandler.DeleteChannel(s, e.GuildID, vsOld.ChannelID); err != nil {
+		if isAVChannel {
+			// DO LITERALLY NOTHING
+		} else if strings.Contains(idString, vsNew.ChannelID) { // User switched to a channel that is in the autovoice list
+			avChannel, err := l.autovoiceHandler.GetChannelFromOwner(e.GuildID, e.UserID)
+			if err != nil || avChannel == nil { // User has no channel
+				if _, err := l.autovoiceHandler.CreateChannel(s, e.GuildID, e.UserID, vsNew.ChannelID); err != nil {
 					return
 				}
-			}
+			} else { // User has a channel
+				// remove member from old channel
+				if err := l.autovoiceHandler.RemoveMember(e.GuildID, e.UserID, vsOld.ChannelID); err != nil {
+					return
+				}
 
-			// check if user joined a channel that is in the auto voice list
-			if strings.Contains(idString, vsNew.ChannelID) {
-				// create a new channel
-				if _, err := l.autovoiceHandler.CreateChannel(s, e.GuildID, e.UserID, vsNew.ChannelID); err != nil {
+				// delete channel
+				if err := l.autovoiceHandler.DeleteChannel(s, e.GuildID, vsOld.ChannelID); err != nil {
 					return
 				}
 			}
