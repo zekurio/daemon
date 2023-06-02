@@ -32,9 +32,9 @@ type Database interface {
 
 	// AutoVoice
 
-	GetGuildMap(guildID string) (models.GuildMap, error)
-	AddUpdateGuildMap(guildID string, guildMap models.GuildMap) error
-	GetAllGuildMaps() (map[string]models.GuildMap, error)
+	GetGuildMap(guildID string) (models.ChannelMap, error)
+	AddUpdateGuildMap(guildID string, channelMap models.ChannelMap) error
+	GetAllGuildMaps() (map[string]models.ChannelMap, error)
 	DeleteGuildMap(guildID string) error
 
 	// Data management

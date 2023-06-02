@@ -83,11 +83,11 @@ func (p *Postgres) GetAutoRoles(guildID string) ([]string, error) {
 		return []string{}, err
 	}
 
-	return strings.Split(roleStr, ","), nil
+	return strings.Split(roleStr, ";"), nil
 }
 
 func (p *Postgres) SetAutoRoles(guildID string, roleIDs []string) error {
-	return SetValue(p, "guilds", "autorole_ids", strings.Join(roleIDs, ","), "guild_id", guildID)
+	return SetValue(p, "guilds", "autorole_ids", strings.Join(roleIDs, ";"), "guild_id", guildID)
 }
 
 func (p *Postgres) GetAutoVoice(guildID string) ([]string, error) {
@@ -96,7 +96,7 @@ func (p *Postgres) GetAutoVoice(guildID string) ([]string, error) {
 		return []string{}, err
 	}
 
-	return strings.Split(chStr, ","), nil
+	return strings.Split(chStr, ";"), nil
 }
 
 func (p *Postgres) SetAutoVoice(guildID string, channelIDs []string) error {
@@ -121,7 +121,7 @@ func (p *Postgres) GetPermissions(guildID string) (map[string]perms.Array, error
 			return nil, p.wrapErr(err)
 		}
 
-		results[roleID] = strings.Split(permStr, ",")
+		results[roleID] = strings.Split(permStr, ";")
 	}
 
 	return results, nil
@@ -134,7 +134,7 @@ func (p *Postgres) SetPermissions(guildID, roleID string, perms perms.Array) err
 		return err
 	}
 
-	pStr := strings.Join(perms, ",")
+	pStr := strings.Join(perms, ";")
 	res, err := p.db.Exec(`UPDATE permissions SET perms = $1 WHERE guild_id = $2 AND role_id = $3`, pStr, guildID, roleID)
 	if err != nil {
 		return err
@@ -194,7 +194,7 @@ func (p *Postgres) DeleteVote(voteID string) error {
 
 // AUTOVOICE
 
-func (p *Postgres) GetGuildMap(guildID string) (models.GuildMap, error) {
+func (p *Postgres) GetGuildMap(guildID string) (models.ChannelMap, error) {
 	var rawData string
 
 	err := p.db.QueryRow(`SELECT json_data FROM autovoice WHERE guild_id = $1`, guildID).Scan(&rawData)
@@ -202,7 +202,7 @@ func (p *Postgres) GetGuildMap(guildID string) (models.GuildMap, error) {
 		return nil, p.wrapErr(err)
 	}
 
-	result, err := util.Unmarshal[models.GuildMap](rawData)
+	result, err := util.Unmarshal[models.ChannelMap](rawData)
 	if err != nil {
 		p.DeleteVote(guildID)
 	}
@@ -210,7 +210,7 @@ func (p *Postgres) GetGuildMap(guildID string) (models.GuildMap, error) {
 	return result, nil
 }
 
-func (p *Postgres) AddUpdateGuildMap(guildID string, guildMap models.GuildMap) error {
+func (p *Postgres) AddUpdateGuildMap(guildID string, guildMap models.ChannelMap) error {
 	rawData, err := util.Marshal(guildMap)
 	if err != nil {
 		return err
@@ -220,20 +220,20 @@ func (p *Postgres) AddUpdateGuildMap(guildID string, guildMap models.GuildMap) e
 	return err
 }
 
-func (p *Postgres) GetAllGuildMaps() (map[string]models.GuildMap, error) {
+func (p *Postgres) GetAllGuildMaps() (map[string]models.ChannelMap, error) {
 	rows, err := p.db.Query(`SELECT guild_id, json_data FROM autovoice`)
 	if err != nil {
 		return nil, p.wrapErr(err)
 	}
 
-	var results = make(map[string]models.GuildMap)
+	var results = make(map[string]models.ChannelMap)
 	for rows.Next() {
 		var guildID, rawData string
 		err := rows.Scan(&guildID, &rawData)
 		if err != nil {
 			continue
 		}
-		guildMap, err := util.Unmarshal[models.GuildMap](rawData)
+		guildMap, err := util.Unmarshal[models.ChannelMap](rawData)
 		if err != nil {
 			p.DeleteGuildMap(guildID)
 		} else {

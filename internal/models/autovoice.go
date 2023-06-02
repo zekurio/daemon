@@ -1,6 +1,6 @@
 package models
 
-type GuildMap map[string]*AVChannel
+type ChannelMap map[string]AVChannel
 
 type AVChannel struct {
 	GuildID          string

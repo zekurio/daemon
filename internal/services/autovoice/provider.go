@@ -1,45 +1,20 @@
 package autovoice
 
-import (
-	"github.com/bwmarrin/discordgo"
-	"github.com/zekurio/daemon/internal/models"
-)
+import "github.com/bwmarrin/discordgo"
 
 type AutovoiceProvider interface {
-	// SetGuilds overwrites the complete guilds map with a new one
-	SetGuilds(guildMap map[string]models.GuildMap)
+	// Join is called when a user joins a voice channel
+	// it handles all the logic for creating a new channel
+	// or handling people joining a created auto voice channel
+	Join(s *discordgo.Session, e *discordgo.VoiceStateUpdate) (err error)
 
-	// CreateChannel handles creating a new autovoice channel
-	// and adding it to the guild map, it also handles
-	// saving to the database
-	CreateChannel(s *discordgo.Session, guildID, ownerID, parentID string) (a *models.AVChannel, err error)
+	// Leave is called when a user leaves a voice channel
+	// it handles all the logic for deleting a channel
+	// or handling people leaving a created auto voice channel
+	Leave(s *discordgo.Session, e *discordgo.VoiceStateUpdate) (err error)
 
-	// DeleteChannel handles deleting an autovoice channel
-	// and removing it from the guild map, it also handles
-	// removing it from the database
-	DeleteChannel(s *discordgo.Session, guildID, channelID string) (err error)
-
-	// SwapOwner handles swapping the owner of an autovoice channel
-	// in case the owner leaves the channel
-	SwapOwner(s *discordgo.Session, guildID, newOwner, channelID string) (err error)
-
-	// Deconstruct deconstructs the autovoice service,
-	// saves the guild map to the database
-	Deconstruct() error
-
-	// GetChannelFromOwner returns the AVChannel struct
-	// from the guild map based on the owner ID
-	GetChannelFromOwner(guildID, ownerID string) (*models.AVChannel, error)
-
-	// IsCreatedChannel returns true if the channel ID is a created autovoice channel
-	IsCreatedChannel(guildID, channelID string) bool
-
-	// CurrentChannels returns the currently active autovoice channels in a guild
-	CurrentChannels(guildID string) (channels []*models.AVChannel, err error)
-
-	// AddMember adds a member to an autovoice channel
-	AddMember(guildID, userID, channelID string) (err error)
-
-	// RemoveMember removes a member from an autovoice channel
-	RemoveMember(guildID, userID, channelID string) (err error)
+	// Move is called when a user moves from one voice channel to another
+	// it handles all the logic for deleting a channel
+	// or handling people leaving a created auto voice channel
+	Move(s *discordgo.Session, e *discordgo.VoiceStateUpdate) (err error)
 }

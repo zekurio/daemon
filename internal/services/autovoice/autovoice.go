@@ -2,161 +2,147 @@ package autovoice
 
 import (
 	"errors"
-
 	"github.com/bwmarrin/discordgo"
 	"github.com/zekurio/daemon/internal/models"
 	"github.com/zekurio/daemon/internal/services/database"
 	"github.com/zekurio/daemon/pkg/arrayutils"
 	"github.com/zekurio/daemon/pkg/discordutils"
+	"strings"
 )
 
 // AutovoiceHandler is the struct that handles the autovoice service
 type AutovoiceHandler struct {
-	db     database.Database
-	guilds map[string]models.GuildMap
+	db       database.Database
+	channels map[string]models.AVChannel // userID -> AVChannel
 }
 
 var _ AutovoiceProvider = (*AutovoiceHandler)(nil)
 
 func NewAutovoiceHandler(db database.Database) *AutovoiceHandler {
 	return &AutovoiceHandler{
-		db:     db,
-		guilds: make(map[string]models.GuildMap),
+		db:       db,
+		channels: make(map[string]models.AVChannel),
 	}
 }
 
-// SetGuilds overwrites the complete guilds map with a new one
-func (h *AutovoiceHandler) SetGuilds(guildMap map[string]models.GuildMap) {
-	h.guilds = guildMap
-}
+func (a *AutovoiceHandler) Join(s *discordgo.Session, e *discordgo.VoiceStateUpdate) (err error) {
 
-// CreateChannel creates a new autovoice channel and adds it to the guild map
-func (h *AutovoiceHandler) CreateChannel(s *discordgo.Session, guildID, ownerID, parentID string) (a *models.AVChannel, err error) {
-	var (
-		pCh *discordgo.Channel
-	)
+	// we established that the user joined a voice channel
+	// until here
 
-	pCh, err = s.Channel(parentID)
-	if err != nil {
-		return
+	// now we check if the user joined a channel that is
+	// in the autovoice list
+	avChannels, err := a.db.GetAutoVoice(e.GuildID)
+	if err != nil || len(avChannels) == 0 {
+		return errors.New("no autovoice channels found")
 	}
 
-	oUser, err := discordutils.GetMember(s, guildID, ownerID)
-	if err != nil {
-		return
-	}
+	idString := strings.Join(avChannels, ";")
 
-	ch, err := s.GuildChannelCreateComplex(guildID, discordgo.GuildChannelCreateData{
-		Name:     createChannelName(oUser, pCh.Name),
-		Type:     discordgo.ChannelTypeGuildVoice,
-		ParentID: pCh.ParentID,
-		Position: pCh.Position + 1,
-	})
-	if err != nil {
-		return
-	}
-
-	a = &models.AVChannel{
-		GuildID:          guildID,
-		OwnerID:          ownerID,
-		OriginChannelID:  parentID,
-		CreatedChannelID: ch.ID,
-		Members:          []string{ownerID},
-	}
-
-	// Check if the guild map is nil
-	if h.guilds[guildID] == nil {
-		h.guilds[guildID] = make(models.GuildMap)
-	}
-
-	h.guilds[guildID][ch.ID] = a
-
-	if err := s.GuildMemberMove(guildID, ownerID, &ch.ID); err != nil {
-		return nil, err
-	}
-
-	return a, h.db.AddUpdateGuildMap(guildID, h.guilds[guildID])
-}
-
-// DeleteChannel deletes an autovoice channel and removes it from the guild map, it does
-// not delete the channel if there are still people in it
-func (h *AutovoiceHandler) DeleteChannel(s *discordgo.Session, guildID, channelID string) (err error) {
-	if _, ok := h.guilds[guildID][channelID]; !ok {
-		return errors.New("channel not found")
-	}
-
-	if len(h.guilds[guildID][channelID].Members) > 1 {
-		newOwner := h.guilds[guildID][channelID].Members[1]
-
-		// swap the owner
-		if err = h.SwapOwner(s, guildID, newOwner, channelID); err != nil {
+	if strings.Contains(e.ChannelID, idString) {
+		// create a new channel for the user
+		err = a.createAVChannel(s, e.GuildID, e.UserID, e.ChannelID)
+		if err != nil {
 			return err
 		}
 	}
 
-	_, err = s.ChannelDelete(channelID)
-	if err != nil {
-		return
-	}
-
-	delete(h.guilds[guildID], channelID)
-
-	return h.db.AddUpdateGuildMap(guildID, h.guilds[guildID])
-}
-
-// SwapOwner swaps the owner of an autovoice channel
-func (h *AutovoiceHandler) SwapOwner(s *discordgo.Session, guildID, newOwner, channelID string) (err error) {
-	if _, ok := h.guilds[guildID][channelID]; !ok {
-		return errors.New("channel not found")
-	}
-
-	// rename channel
-	oUser, err := discordutils.GetMember(s, guildID, newOwner)
-	if err != nil {
-		return
-	}
-
-	pCh, err := discordutils.GetChannel(s, h.guilds[guildID][channelID].OriginChannelID)
-	if err != nil {
-		return
-	}
-
-	_, err = s.ChannelEdit(channelID, &discordgo.ChannelEdit{
-		Name: createChannelName(oUser, pCh.Name),
-	})
-	if err != nil {
-		return
-	}
-
-	return h.db.AddUpdateGuildMap(guildID, h.guilds[guildID])
-}
-
-// Deconstruct deconstructs the autovoice service, saves the guild map to the database
-func (h *AutovoiceHandler) Deconstruct() error {
-	for k, v := range h.guilds {
-		if err := h.db.AddUpdateGuildMap(k, v); err != nil {
-			return err
-		}
+	// check if the user joined a channel that is
+	// a created autovoice channel
+	if a.isAVChannel(e.ChannelID) {
+		a.appendMember(e.ChannelID, e.UserID)
 	}
 
 	return nil
 }
 
-// GetChannelFromOwner returns the AVChannel struct from the guild map based on the owner ID
-func (h *AutovoiceHandler) GetChannelFromOwner(guildID, ownerID string) (*models.AVChannel, error) {
-	for _, v := range h.guilds[guildID] {
-		if v.OwnerID == ownerID {
-			return v, nil
-		}
-	}
-
-	return nil, errors.New("channel not found")
+func (a *AutovoiceHandler) Leave(s *discordgo.Session, e *discordgo.VoiceStateUpdate) (err error) {
+	//TODO implement me
+	panic("implement me")
 }
 
-// IsCreatedChannel returns true if the channel ID is a created autovoice channel
-func (h *AutovoiceHandler) IsCreatedChannel(guildID, channelID string) bool {
-	for _, v := range h.guilds[guildID] {
-		if v.CreatedChannelID == channelID {
+func (a *AutovoiceHandler) Move(s *discordgo.Session, e *discordgo.VoiceStateUpdate) (err error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+// HELPERS
+
+func (a *AutovoiceHandler) createAVChannel(s *discordgo.Session, guildID, ownerID, parentID string) (err error) {
+	ownerMember, err := discordutils.GetMember(s, guildID, ownerID)
+	if err != nil {
+		return
+	}
+	pChannel, err := discordutils.GetChannel(s, parentID)
+	if err != nil {
+		return
+	}
+
+	ch, err := s.GuildChannelCreateComplex(guildID, discordgo.GuildChannelCreateData{
+		Name:     channelName(ownerMember, pChannel.Name),
+		Type:     discordgo.ChannelTypeGuildVoice,
+		ParentID: parentID,
+		Position: pChannel.Position + 1,
+	})
+	if err != nil {
+		return
+	}
+
+	a.setAVChannel(ownerID, models.AVChannel{
+		GuildID:          guildID,
+		OwnerID:          ownerID,
+		OriginChannelID:  parentID,
+		CreatedChannelID: ch.ID,
+		Members:          []string{ownerID},
+	})
+
+	err = s.GuildMemberMove(guildID, ownerID, &ch.ID)
+
+	return err
+}
+
+func (a *AutovoiceHandler) deleteAVChannel(s *discordgo.Session, guildID, ownerID string) (err error) {
+	channel := a.getAVChannel(ownerID)
+
+	_, err = s.ChannelDelete(channel.CreatedChannelID)
+	if err != nil {
+		return
+	}
+
+	delete(a.channels, ownerID)
+
+	return
+}
+
+// appendMember appends the given memberID to the AVChannel
+// it searches for the AVChannel in the map and appends the memberID
+func (a *AutovoiceHandler) appendMember(channelID, memberID string) {
+	for _, channel := range a.channels {
+		if channel.CreatedChannelID == channelID {
+			channel.Members = append(channel.Members, memberID)
+		}
+	}
+}
+
+// removeMember removes the given memberID from the AVChannel
+// it searches for the AVChannel in the map and removes the memberID
+func (a *AutovoiceHandler) removeMember(channelID, memberID string) {
+	for _, channel := range a.channels {
+		if channel.CreatedChannelID == channelID {
+			for _, member := range channel.Members {
+				if member == memberID {
+					channel.Members = arrayutils.RemoveLazy(channel.Members, memberID)
+				}
+			}
+		}
+	}
+}
+
+// isAVChannel returns true if the given channelID is an autovoice channel
+// otherwise it returns false
+func (a *AutovoiceHandler) isAVChannel(channelID string) bool {
+	for _, channel := range a.channels {
+		if channel.CreatedChannelID == channelID {
 			return true
 		}
 	}
@@ -164,44 +150,27 @@ func (h *AutovoiceHandler) IsCreatedChannel(guildID, channelID string) bool {
 	return false
 }
 
-// IsOwner returns true if the user ID is the owner of an autovoice channel
-func (h *AutovoiceHandler) IsOwner(guildID, userID, channelID string) bool {
-	if _, ok := h.guilds[guildID][channelID]; !ok {
-		return false
+// getAVChannel returns the AVChannel for the given userID
+// if it exists, otherwise it returns an empty AVChannel
+func (a *AutovoiceHandler) getAVChannel(userID string) *models.AVChannel {
+	if channel, ok := a.channels[userID]; ok {
+		return &channel
 	}
-	return h.guilds[guildID][channelID].OwnerID == userID
+
+	return &models.AVChannel{}
 }
 
-// CurrentChannels returns the currently active autovoice channels in a guild
-func (h *AutovoiceHandler) CurrentChannels(guildID string) (channels []*models.AVChannel, err error) {
-	for _, v := range h.guilds[guildID] {
-		channels = append(channels, v)
-	}
-
-	return
+// setAVChannel sets the AVChannel for the given userID
+func (a *AutovoiceHandler) setAVChannel(userID string, channel models.AVChannel) {
+	a.channels[userID] = channel
 }
 
-// AddMember adds a member to an autovoice channel
-func (h *AutovoiceHandler) AddMember(guildID, userID, channelID string) (err error) {
-	if ch, ok := h.guilds[guildID][channelID]; ok {
-		ch.Members = arrayutils.Add(ch.Members, userID, -1)
+// channelName returns the name of the channel that should be created
+// for the given user
+func channelName(member *discordgo.Member, pChannelName string) string {
+	if member.Nick != "" {
+		return member.Nick + "'s " + pChannelName
+	} else {
+		return member.User.Username + "'s " + pChannelName
 	}
-
-	return h.db.AddUpdateGuildMap(guildID, h.guilds[guildID])
-}
-
-// RemoveMember removes a member from an autovoice channel
-func (h *AutovoiceHandler) RemoveMember(guildID, userID, channelID string) (err error) {
-	if ch, ok := h.guilds[guildID][channelID]; ok {
-		ch.Members = arrayutils.RemoveLazy(ch.Members, userID)
-	}
-
-	return h.db.AddUpdateGuildMap(guildID, h.guilds[guildID])
-}
-
-func createChannelName(user *discordgo.Member, channelName string) string {
-	if user.Nick != "" {
-		return user.Nick + "'s " + channelName
-	}
-	return user.User.Username + "'s " + channelName
 }
