@@ -127,11 +127,13 @@ func main() {
 	err = diBuilder.Add(di.Def{
 		Name: static.DiAutovoice,
 		Build: func(ctn di.Container) (interface{}, error) {
-			return inits.InitAutovoice(ctn), nil
+			return autovoice.InitAutovoice(ctn), nil
 		},
+		/* TODO implement deconstruct, save data to db
 		Close: func(obj interface{}) error {
 			return obj.(*autovoice.AutovoiceHandler).Deconstruct()
 		},
+		*/
 	})
 
 	// Build dependency injection container

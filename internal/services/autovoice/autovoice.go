@@ -3,8 +3,10 @@ package autovoice
 import (
 	"errors"
 	"github.com/bwmarrin/discordgo"
+	"github.com/sarulabs/di/v2"
 	"github.com/zekurio/daemon/internal/models"
 	"github.com/zekurio/daemon/internal/services/database"
+	"github.com/zekurio/daemon/internal/util/static"
 	"github.com/zekurio/daemon/pkg/arrayutils"
 	"github.com/zekurio/daemon/pkg/discordutils"
 	"strings"
@@ -18,20 +20,14 @@ type AutovoiceHandler struct {
 
 var _ AutovoiceProvider = (*AutovoiceHandler)(nil)
 
-func NewAutovoiceHandler(db database.Database) *AutovoiceHandler {
+func InitAutovoice(ctn di.Container) *AutovoiceHandler {
 	return &AutovoiceHandler{
-		db:       db,
+		db:       ctn.Get(static.DiDatabase).(database.Database),
 		channels: make(map[string]models.AVChannel),
 	}
 }
 
 func (a *AutovoiceHandler) Join(s *discordgo.Session, e *discordgo.VoiceStateUpdate) (err error) {
-
-	// we established that the user joined a voice channel
-	// until here
-
-	// now we check if the user joined a channel that is
-	// in the autovoice list
 	avChannels, err := a.db.GetAutoVoice(e.GuildID)
 	if err != nil || len(avChannels) == 0 {
 		return errors.New("no autovoice channels found")
@@ -57,13 +53,36 @@ func (a *AutovoiceHandler) Join(s *discordgo.Session, e *discordgo.VoiceStateUpd
 }
 
 func (a *AutovoiceHandler) Leave(s *discordgo.Session, e *discordgo.VoiceStateUpdate) (err error) {
-	//TODO implement me
-	panic("implement me")
+	if a.isAVChannel(e.BeforeUpdate.ChannelID) {
+		a.removeMember(e.BeforeUpdate.ChannelID, e.BeforeUpdate.UserID)
+
+		if a.isOwner(e.BeforeUpdate.ChannelID, e.BeforeUpdate.UserID) {
+			channel := a.getAVChannel(e.BeforeUpdate.UserID)
+			if len(channel.Members) == 0 {
+				return a.deleteAVChannel(s, e.BeforeUpdate.UserID)
+			} else {
+				return a.swapOwner(s, e.BeforeUpdate.UserID, channel.Members[0])
+			}
+		}
+	}
+
+	return nil
 }
 
 func (a *AutovoiceHandler) Move(s *discordgo.Session, e *discordgo.VoiceStateUpdate) (err error) {
-	//TODO implement me
-	panic("implement me")
+	// first, call the leave function
+	err = a.Leave(s, e)
+	if err != nil {
+		return err
+	}
+
+	// then, call the join function
+	err = a.Join(s, e)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // HELPERS
@@ -73,14 +92,18 @@ func (a *AutovoiceHandler) createAVChannel(s *discordgo.Session, guildID, ownerI
 	if err != nil {
 		return
 	}
+
 	pChannel, err := discordutils.GetChannel(s, parentID)
 	if err != nil {
 		return
 	}
 
-	ch, err := s.GuildChannelCreateComplex(guildID, discordgo.GuildChannelCreateData{
-		Name:     channelName(ownerMember, pChannel.Name),
-		Type:     discordgo.ChannelTypeGuildVoice,
+	ch, err := s.GuildChannelCreate(guildID, channelName(ownerMember, pChannel.Name), discordgo.ChannelTypeGuildVoice)
+	if err != nil {
+		return
+	}
+
+	ch, err = s.ChannelEditComplex(ch.ID, &discordgo.ChannelEdit{
 		ParentID: parentID,
 		Position: pChannel.Position + 1,
 	})
@@ -101,7 +124,7 @@ func (a *AutovoiceHandler) createAVChannel(s *discordgo.Session, guildID, ownerI
 	return err
 }
 
-func (a *AutovoiceHandler) deleteAVChannel(s *discordgo.Session, guildID, ownerID string) (err error) {
+func (a *AutovoiceHandler) deleteAVChannel(s *discordgo.Session, ownerID string) (err error) {
 	channel := a.getAVChannel(ownerID)
 
 	_, err = s.ChannelDelete(channel.CreatedChannelID)
@@ -110,6 +133,41 @@ func (a *AutovoiceHandler) deleteAVChannel(s *discordgo.Session, guildID, ownerI
 	}
 
 	delete(a.channels, ownerID)
+
+	return
+}
+
+// swapOwner swaps the owner of the AVChannel
+func (a *AutovoiceHandler) swapOwner(s *discordgo.Session, oldOwnerID, newOwnerID string) (err error) {
+	channel := a.getAVChannel(oldOwnerID)
+
+	// first, we get our new owner member and parent channel
+	ownerMember, err := discordutils.GetMember(s, channel.GuildID, newOwnerID)
+	if err != nil {
+		return
+	}
+
+	pChannel, err := discordutils.GetChannel(s, channel.OriginChannelID)
+	if err != nil {
+		return
+	}
+
+	// then we edit the channel
+	_, err = s.ChannelEditComplex(channel.CreatedChannelID, &discordgo.ChannelEdit{
+		Name:     channelName(ownerMember, pChannel.Name),
+		ParentID: channel.OriginChannelID,
+	})
+	if err != nil {
+		return
+	}
+
+	// then we set the new owner
+	channel.OwnerID = newOwnerID
+
+	// then we remove the old entry and add the new one
+	delete(a.channels, oldOwnerID)
+
+	a.setAVChannel(newOwnerID, *channel)
 
 	return
 }
@@ -144,6 +202,20 @@ func (a *AutovoiceHandler) isAVChannel(channelID string) bool {
 	for _, channel := range a.channels {
 		if channel.CreatedChannelID == channelID {
 			return true
+		}
+	}
+
+	return false
+}
+
+// isOwner returns true if the given userID is the owner of the AVChannel
+// otherwise it returns false
+func (a *AutovoiceHandler) isOwner(channelID, userID string) bool {
+	for _, channel := range a.channels {
+		if channel.CreatedChannelID == channelID {
+			if channel.OwnerID == userID {
+				return true
+			}
 		}
 	}
 

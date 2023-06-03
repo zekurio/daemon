@@ -21,13 +21,6 @@ func NewListenerAutovoice(ctn di.Container) *ListenerAutovoice {
 }
 
 func (l *ListenerAutovoice) Handler(s *discordgo.Session, e *discordgo.VoiceStateUpdate) {
-
-	// first, check if user muted or deafened themselves
-	// if so, we don't need to do anything
-	if (e.BeforeUpdate.SelfMute != e.SelfMute) || (e.BeforeUpdate.SelfDeaf != e.SelfDeaf) {
-		return
-	}
-
 	if e.BeforeUpdate == nil && e.VoiceState != nil {
 		err := l.avhandler.Join(s, e)
 		if err != nil {
@@ -44,5 +37,4 @@ func (l *ListenerAutovoice) Handler(s *discordgo.Session, e *discordgo.VoiceStat
 			return
 		}
 	}
-
 }
