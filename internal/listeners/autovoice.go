@@ -26,13 +26,8 @@ func (l *ListenerAutovoice) Handler(s *discordgo.Session, e *discordgo.VoiceStat
 		if err != nil {
 			return
 		}
-	} else if e.BeforeUpdate != nil && e.VoiceState == nil {
+	} else {
 		err := l.avhandler.Leave(s, e)
-		if err != nil {
-			return
-		}
-	} else if (e.BeforeUpdate != nil && e.VoiceState != nil) && (e.BeforeUpdate.ChannelID != e.VoiceState.ChannelID) {
-		err := l.avhandler.Move(s, e)
 		if err != nil {
 			return
 		}
