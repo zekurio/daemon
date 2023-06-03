@@ -16,5 +16,5 @@ type AutovoiceProvider interface {
 	// Move is called when a user moves from one voice channel to another
 	// it handles all the logic for deleting a channel
 	// or handling people leaving a created auto voice channel
-	Move(s *discordgo.Session, vs *discordgo.VoiceState) (err error)
+	Move(s *discordgo.Session, vsNew, vsOld *discordgo.VoiceState) (err error)
 }

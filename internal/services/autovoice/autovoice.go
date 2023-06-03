@@ -35,10 +35,9 @@ func (a *AutovoiceHandler) Join(s *discordgo.Session, vs *discordgo.VoiceState) 
 
 	idString := strings.Join(avChannels, ";")
 
-	if strings.Contains(vs.ChannelID, idString) {
+	if strings.Contains(idString, vs.ChannelID) {
 		// create a new channel for the user
-		err = a.createAVChannel(s, vs.GuildID, vs.UserID, vs.ChannelID)
-		if err != nil {
+		if err = a.createAVChannel(s, vs.GuildID, vs.UserID, vs.ChannelID); err != nil {
 			return err
 		}
 	}
@@ -69,8 +68,20 @@ func (a *AutovoiceHandler) Leave(s *discordgo.Session, vs *discordgo.VoiceState)
 	return nil
 }
 
-func (a *AutovoiceHandler) Move(s *discordgo.Session, vs *discordgo.VoiceState) (err error) {
-	panic("implement me")
+func (a *AutovoiceHandler) Move(s *discordgo.Session, vsNew, vsOld *discordgo.VoiceState) (err error) {
+	// do nothing if the user gets moved to their own channel
+	if a.isAVChannel(vsNew.ChannelID) && a.isOwner(vsNew.ChannelID, vsNew.UserID) {
+		return nil
+	}
+
+	// check if the user moved from an autovoice channel
+	// we can use leave here to handle the deletion of the channel
+	err = a.Leave(s, vsOld)
+
+	// now we handle the join part of the move
+	err = a.Join(s, vsNew)
+
+	return err
 }
 
 // HELPERS
@@ -153,7 +164,7 @@ func (a *AutovoiceHandler) swapOwner(s *discordgo.Session, channelID, newOwnerID
 	channel.OwnerID = newOwnerID
 
 	// and finally we save the channel
-	a.setAVChannel(channelID, channel)
+	a.setAVChannel(channelID, *channel)
 
 	return
 }
@@ -186,16 +197,27 @@ func (a *AutovoiceHandler) isAVChannel(channelID string) bool {
 	return false
 }
 
-// getAVChannel returns the AVChannel for the given channelID key
-func (a *AutovoiceHandler) getAVChannel(channelID string) models.AVChannel {
+// getAVChannel returns the AVChannel for the given channelID
+func (a *AutovoiceHandler) getAVChannel(channelID string) *models.AVChannel {
 	if channel, ok := a.channels[channelID]; ok {
-		return channel
+		return &channel
 	}
 
-	return models.AVChannel{}
+	return &models.AVChannel{}
 }
 
-// setAVChannel sets the AVChannel for the given channelID key
+// getAVChannelByOwner returns the AVChannel for the given ownerID
+func (a *AutovoiceHandler) getAVChannelByOwner(ownerID string) *models.AVChannel {
+	for _, channel := range a.channels {
+		if channel.OwnerID == ownerID {
+			return &channel
+		}
+	}
+
+	return &models.AVChannel{}
+}
+
+// setAVChannel sets the AVChannel for the given channelID
 func (a *AutovoiceHandler) setAVChannel(channelID string, channel models.AVChannel) {
 	a.channels[channelID] = channel
 }
