@@ -27,17 +27,17 @@ func InitAutovoice(ctn di.Container) *AutovoiceHandler {
 	}
 }
 
-func (a *AutovoiceHandler) Join(s *discordgo.Session, e *discordgo.VoiceStateUpdate) (err error) {
-	avChannels, err := a.db.GetAutoVoice(e.GuildID)
+func (a *AutovoiceHandler) Join(s *discordgo.Session, vs *discordgo.VoiceState) (err error) {
+	avChannels, err := a.db.GetAutoVoice(vs.GuildID)
 	if err != nil || len(avChannels) == 0 {
 		return errors.New("no autovoice channels found")
 	}
 
 	idString := strings.Join(avChannels, ";")
 
-	if strings.Contains(e.ChannelID, idString) {
+	if strings.Contains(vs.ChannelID, idString) {
 		// create a new channel for the user
-		err = a.createAVChannel(s, e.GuildID, e.UserID, e.ChannelID)
+		err = a.createAVChannel(s, vs.GuildID, vs.UserID, vs.ChannelID)
 		if err != nil {
 			return err
 		}
@@ -45,23 +45,23 @@ func (a *AutovoiceHandler) Join(s *discordgo.Session, e *discordgo.VoiceStateUpd
 
 	// check if the user joined a channel that is
 	// a created autovoice channel
-	if a.isAVChannel(e.ChannelID) {
-		a.appendMember(e.ChannelID, e.UserID)
+	if a.isAVChannel(vs.ChannelID) {
+		a.appendMember(vs.ChannelID, vs.UserID)
 	}
 
 	return nil
 }
 
-func (a *AutovoiceHandler) Leave(s *discordgo.Session, e *discordgo.VoiceStateUpdate) (err error) {
-	if a.isAVChannel(e.BeforeUpdate.ChannelID) {
-		a.removeMember(e.BeforeUpdate.ChannelID, e.BeforeUpdate.UserID)
+func (a *AutovoiceHandler) Leave(s *discordgo.Session, vs *discordgo.VoiceState) (err error) {
+	if a.isAVChannel(vs.ChannelID) {
+		a.removeMember(vs.ChannelID, vs.UserID)
 
-		if a.isOwner(e.BeforeUpdate.ChannelID, e.BeforeUpdate.UserID) {
-			channel := a.getAVChannel(e.BeforeUpdate.UserID)
+		if a.isOwner(vs.ChannelID, vs.UserID) {
+			channel := a.getAVChannel(vs.ChannelID)
 			if len(channel.Members) == 0 {
-				return a.deleteAVChannel(s, e.BeforeUpdate.UserID)
+				return a.deleteAVChannel(s, vs.ChannelID)
 			} else {
-				return a.swapOwner(s, e.BeforeUpdate.UserID, channel.Members[0])
+				return a.swapOwner(s, vs.ChannelID, channel.Members[0])
 			}
 		}
 	}
@@ -69,7 +69,7 @@ func (a *AutovoiceHandler) Leave(s *discordgo.Session, e *discordgo.VoiceStateUp
 	return nil
 }
 
-func (a *AutovoiceHandler) Move(s *discordgo.Session, e *discordgo.VoiceStateUpdate) (err error) {
+func (a *AutovoiceHandler) Move(s *discordgo.Session, vs *discordgo.VoiceState) (err error) {
 	panic("implement me")
 }
 
@@ -112,15 +112,15 @@ func (a *AutovoiceHandler) createAVChannel(s *discordgo.Session, guildID, ownerI
 	return err
 }
 
-func (a *AutovoiceHandler) deleteAVChannel(s *discordgo.Session, ownerID string) (err error) {
-	channel := a.getAVChannel(ownerID)
+func (a *AutovoiceHandler) deleteAVChannel(s *discordgo.Session, channelID string) (err error) {
+	channel := a.getAVChannel(channelID)
 
 	_, err = s.ChannelDelete(channel.CreatedChannelID)
 	if err != nil {
 		return
 	}
 
-	delete(a.channels, ownerID)
+	delete(a.channels, channelID)
 
 	return
 }
@@ -163,6 +163,7 @@ func (a *AutovoiceHandler) swapOwner(s *discordgo.Session, channelID, newOwnerID
 func (a *AutovoiceHandler) appendMember(channelID, memberID string) {
 	if channel, ok := a.channels[channelID]; ok {
 		channel.Members = arrayutils.Add(channel.Members, memberID, -1)
+		a.setAVChannel(channelID, channel)
 	}
 }
 
@@ -171,6 +172,7 @@ func (a *AutovoiceHandler) appendMember(channelID, memberID string) {
 func (a *AutovoiceHandler) removeMember(channelID, memberID string) {
 	if channel, ok := a.channels[channelID]; ok {
 		channel.Members = arrayutils.RemoveLazy(channel.Members, memberID)
+		a.setAVChannel(channelID, channel)
 	}
 }
 

@@ -9,26 +9,41 @@ import (
 )
 
 type ListenerAutovoice struct {
-	db        database.Database
-	avhandler *autovoice.AutovoiceHandler
+	db              database.Database
+	avhandler       *autovoice.AutovoiceHandler
+	voiceStateCache map[string]*discordgo.VoiceState
 }
 
 func NewListenerAutovoice(ctn di.Container) *ListenerAutovoice {
 	return &ListenerAutovoice{
-		db:        ctn.Get(static.DiDatabase).(database.Database),
-		avhandler: ctn.Get(static.DiAutovoice).(*autovoice.AutovoiceHandler),
+		db:              ctn.Get(static.DiDatabase).(database.Database),
+		avhandler:       ctn.Get(static.DiAutovoice).(*autovoice.AutovoiceHandler),
+		voiceStateCache: map[string]*discordgo.VoiceState{},
 	}
 }
 
 func (l *ListenerAutovoice) Handler(s *discordgo.Session, e *discordgo.VoiceStateUpdate) {
-	if e.BeforeUpdate == nil && e.VoiceState != nil {
-		err := l.avhandler.Join(s, e)
-		if err != nil {
+	vsOld, _ := l.voiceStateCache[e.UserID]
+	vsNew := e.VoiceState
+
+	l.voiceStateCache[e.UserID] = vsNew
+
+	if vsOld == nil || (vsOld != nil && vsOld.ChannelID == "") {
+
+		if err := l.avhandler.Join(s, vsNew); err != nil {
 			return
 		}
-	} else {
-		err := l.avhandler.Leave(s, e)
-		if err != nil {
+
+	} else if vsOld != nil && vsNew.ChannelID != "" && vsOld.ChannelID != vsNew.ChannelID {
+
+		/* TODO implement move
+		if err := l.avhandler.Move(s, vsNew); err != nil {
+			return
+		}
+		*/
+
+	} else if vsOld != nil && vsNew.ChannelID == "" {
+		if err := l.avhandler.Leave(s, vsOld); err != nil {
 			return
 		}
 	}

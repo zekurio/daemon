@@ -38,6 +38,25 @@ func TestRemove(t *testing.T) {
 
 }
 
+func TestRemoveLazy(t *testing.T) {
+
+	intArr := []int{1, 2, 3, 4, 5}
+	strArr := []string{"a", "b", "c", "d", "e"}
+
+	assert.Equal(t, []int{2, 3, 4, 5}, RemoveLazy(intArr, 1))
+	assert.Equal(t, []int{1, 3, 4, 5}, RemoveLazy(intArr, 2))
+	assert.Equal(t, []int{1, 2, 4, 5}, RemoveLazy(intArr, 3))
+	assert.Equal(t, []int{1, 2, 3, 5}, RemoveLazy(intArr, 4))
+	assert.Equal(t, []int{1, 2, 3, 4}, RemoveLazy(intArr, 5))
+
+	assert.Equal(t, []string{"b", "c", "d", "e"}, RemoveLazy(strArr, "a"))
+	assert.Equal(t, []string{"a", "c", "d", "e"}, RemoveLazy(strArr, "b"))
+	assert.Equal(t, []string{"a", "b", "d", "e"}, RemoveLazy(strArr, "c"))
+	assert.Equal(t, []string{"a", "b", "c", "e"}, RemoveLazy(strArr, "d"))
+	assert.Equal(t, []string{"a", "b", "c", "d"}, RemoveLazy(strArr, "e"))
+
+}
+
 func TestAdd(t *testing.T) {
 
 	intArr := []int{1, 2, 3, 4, 5}
