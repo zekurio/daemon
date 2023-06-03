@@ -2,6 +2,8 @@ package autovoice
 
 import (
 	"errors"
+	"strings"
+
 	"github.com/bwmarrin/discordgo"
 	"github.com/sarulabs/di/v2"
 	"github.com/zekurio/daemon/internal/models"
@@ -9,7 +11,6 @@ import (
 	"github.com/zekurio/daemon/internal/util/static"
 	"github.com/zekurio/daemon/pkg/arrayutils"
 	"github.com/zekurio/daemon/pkg/discordutils"
-	"strings"
 )
 
 // AutovoiceHandler is the struct that handles the autovoice service
@@ -76,10 +77,14 @@ func (a *AutovoiceHandler) Move(s *discordgo.Session, vsNew, vsOld *discordgo.Vo
 
 	// check if the user moved from an autovoice channel
 	// we can use leave here to handle the deletion of the channel
-	err = a.Leave(s, vsOld)
+	if err = a.Leave(s, vsOld); err != nil {
+		return err
+	}
 
 	// now we handle the join part of the move
-	err = a.Join(s, vsNew)
+	if err = a.Join(s, vsNew); err != nil {
+		return err
+	}
 
 	return err
 }
@@ -102,6 +107,14 @@ func (a *AutovoiceHandler) createAVChannel(s *discordgo.Session, guildID, ownerI
 		return
 	}
 
+	ch, err = s.ChannelEdit(ch.ID, &discordgo.ChannelEdit{
+		ParentID: pChannel.ID,
+		Position: pChannel.Position + 1,
+	})
+	if err != nil {
+		return
+	}
+
 	a.setAVChannel(ch.ID, models.AVChannel{
 		GuildID:          guildID,
 		OwnerID:          ownerID,
@@ -111,14 +124,6 @@ func (a *AutovoiceHandler) createAVChannel(s *discordgo.Session, guildID, ownerI
 	})
 
 	err = s.GuildMemberMove(guildID, ownerID, &ch.ID)
-
-	ch, err = s.ChannelEditComplex(ch.ID, &discordgo.ChannelEdit{
-		ParentID: pChannel.ID,
-		Position: pChannel.Position + 1,
-	})
-	if err != nil {
-		return
-	}
 
 	return err
 }

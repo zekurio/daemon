@@ -57,16 +57,15 @@ jobs:
             ${{ secrets.DOCKER_USERNAME }}/daemon:${{ env.TAG }}
             ghcr.io/${{ github.repository_owner }}/daemon:${{ env.TAG }}
 
-# TODO uncomment this when we have a server to deploy to
-#      - name: Deploy to server
-#        if: ${{ env.TAG == 'canary' || env.TAG == 'latest' }} 
-#        uses: appleboy/ssh-action@master
-#        with:
-#          host: ${{ secrets.SSH_HOST }}
-#          username: ${{ secrets.SSH_USER }}
-#          port: 2222
-#          key: ${{ secrets.SSH_PRIVATE_KEY }}
-#          script: |
-#            cd /home/wkr/docker/daemon
-#            docker compose pull daemon-${{ env.TAG }}
-#            docker compose up -d daemon-${{ env.TAG }}
+      - name: Deploy via SSH
+        if: ${{ env.TAG == 'canary' || env.TAG == 'latest' }}
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          port: ${{ secrets.SSH_PORT }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+              cd /home/worker/docker/daemon
+              docker compose pull daemon-${{ env.TAG }}
+              docker compose up -d daemon-${{ env.TAG }}
