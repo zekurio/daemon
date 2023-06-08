@@ -16,7 +16,7 @@ import (
 // AutovoiceHandler is the struct that handles the autovoice service
 type AutovoiceHandler struct {
 	db       database.Database
-	channels map[string]models.AVChannel // avChannelID -> AVChannel
+	channels map[string]models.AVChannel
 }
 
 var _ AutovoiceProvider = (*AutovoiceHandler)(nil)
@@ -195,11 +195,7 @@ func (a *AutovoiceHandler) removeMember(channelID, memberID string) {
 // isAVChannel returns true if the given channelID is an autovoice channel
 // otherwise it returns false
 func (a *AutovoiceHandler) isAVChannel(channelID string) bool {
-	if _, ok := a.channels[channelID]; ok {
-		return true
-	}
-
-	return false
+	return a.getAVChannel(channelID) != nil
 }
 
 // getAVChannel returns the AVChannel for the given channelID
@@ -211,25 +207,13 @@ func (a *AutovoiceHandler) getAVChannel(channelID string) *models.AVChannel {
 	return &models.AVChannel{}
 }
 
-// getAVChannelByOwner returns the AVChannel for the given ownerID
-func (a *AutovoiceHandler) getAVChannelByOwner(ownerID string) *models.AVChannel {
-	for _, channel := range a.channels {
-		if channel.OwnerID == ownerID {
-			return &channel
-		}
-	}
-
-	return &models.AVChannel{}
-}
-
 // setAVChannel sets the AVChannel for the given channelID
 func (a *AutovoiceHandler) setAVChannel(channelID string, channel models.AVChannel) {
 	a.channels[channelID] = channel
 }
 
 func (a *AutovoiceHandler) isOwner(channelID, memberID string) bool {
-	channel := a.getAVChannel(channelID)
-	return channel.OwnerID == memberID
+	return a.getAVChannel(channelID).OwnerID == memberID
 }
 
 // channelName returns the name of the channel that should be created

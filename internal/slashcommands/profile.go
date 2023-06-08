@@ -100,7 +100,7 @@ func (c *Profile) Run(ctx ken.Context) (err error) {
 		return
 	}
 
-	permissions, _, err := p.GetPerms(s, ctx.GetEvent().GuildID, member.User.ID)
+	perms, _, err := p.GetPerms(s, ctx.GetEvent().GuildID, member.User.ID)
 	if err != nil {
 		return
 	}
@@ -120,7 +120,7 @@ func (c *Profile) Run(ctx ken.Context) (err error) {
 			"*failed parsing timestamp*")).
 		AddField("Created at", stringutils.EnsureNotEmpty(createdTime.Format("02.01.2006, 15:04"),
 			"*failed parsing timestamp*")).
-		AddField("Bot Permissions", stringutils.EnsureNotEmpty(strings.Join(permissions, "\n"), "*no permissions set*")).
+		AddField("Bot Permissions", stringutils.EnsureNotEmpty(strings.Join(perms, "\n"), "*no perms set*")).
 		AddField("Roles", stringutils.EnsureNotEmpty(strings.Join(roles, ", "), "*no roles set*"))
 
 	if member.User.Bot {
