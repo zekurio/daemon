@@ -2,7 +2,6 @@ package database
 
 import (
 	"github.com/zekurio/daemon/internal/models"
-	"github.com/zekurio/daemon/internal/util/vote"
 	"github.com/zekurio/daemon/pkg/perms"
 )
 
@@ -24,10 +23,10 @@ type Database interface {
 	GetPermissions(guildID string) (map[string]perms.Array, error)
 	SetPermissions(guildID, roleID string, perms perms.Array) error
 
-	// TODO Votes
+	// Votes
 
-	GetVotes() (map[string]vote.Vote, error)
-	AddUpdateVote(vote vote.Vote) error
+	GetVotes() (map[string]models.Vote, error)
+	AddUpdateVote(vote models.Vote) error
 	DeleteVote(voteID string) error
 
 	// AutoVoice

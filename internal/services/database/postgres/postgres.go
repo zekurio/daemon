@@ -14,7 +14,6 @@ import (
 	"github.com/zekurio/daemon/internal/services/database"
 	"github.com/zekurio/daemon/internal/services/database/dberr"
 	"github.com/zekurio/daemon/internal/util/embedded"
-	"github.com/zekurio/daemon/internal/util/vote"
 	"github.com/zekurio/daemon/pkg/perms"
 )
 
@@ -153,20 +152,20 @@ func (p *Postgres) SetPermissions(guildID, roleID string, perms perms.Array) err
 
 // VOTES
 
-func (p *Postgres) GetVotes() (map[string]vote.Vote, error) {
+func (p *Postgres) GetVotes() (map[string]models.Vote, error) {
 	rows, err := p.db.Query(`SELECT id, json_data FROM votes`)
 	if err != nil {
 		return nil, p.wrapErr(err)
 	}
 
-	var results = make(map[string]vote.Vote)
+	var results = make(map[string]models.Vote)
 	for rows.Next() {
 		var voteID, rawData string
 		err := rows.Scan(&voteID, &rawData)
 		if err != nil {
 			continue
 		}
-		vote, err := vote.Unmarshal(rawData)
+		vote, err := util.Unmarshal[models.Vote](rawData)
 		if err != nil {
 			p.DeleteVote(rawData)
 		} else {
@@ -178,8 +177,8 @@ func (p *Postgres) GetVotes() (map[string]vote.Vote, error) {
 	return results, nil
 }
 
-func (p *Postgres) AddUpdateVote(v vote.Vote) error {
-	rawData, err := vote.Marshal(v)
+func (p *Postgres) AddUpdateVote(v models.Vote) error {
+	rawData, err := util.Marshal(v)
 	if err != nil {
 		return err
 	}
