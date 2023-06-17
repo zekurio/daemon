@@ -1,18 +1,11 @@
 package slashcommands
 
 import (
-	"fmt"
 	"github.com/zekurio/daemon/internal/middlewares"
-	"strings"
-	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/zekrotja/ken"
-	"github.com/zekurio/daemon/internal/services/database"
 	"github.com/zekurio/daemon/internal/services/permissions"
-	"github.com/zekurio/daemon/internal/util/static"
-	"github.com/zekurio/daemon/internal/util/vote"
-	"github.com/zekurio/daemon/pkg/timeutils"
 )
 
 type Vote struct{}
@@ -149,196 +142,17 @@ func (c *Vote) Run(ctx ken.Context) (err error) {
 }
 
 func (c *Vote) create(ctx ken.SubCommandContext) (err error) {
-	db := ctx.Get(static.DiDatabase).(database.Database)
-
-	body := ctx.Options().GetByName("body").StringValue()
-	choices := ctx.Options().GetByName("choices").StringValue()
-	split := strings.Split(choices, ",")
-	if len(split) < 2 || len(split) > 10 {
-		return ctx.FollowUpError(
-			"Invalid arguments. Please use `help vote` go get help about how to use this command.", "").
-			Send().Error
-	}
-	for i, e := range split {
-		if len(e) < 1 {
-			return ctx.FollowUpError(
-				"Choices can not be empty.", "").
-				Send().Error
-		}
-		split[i] = strings.Trim(e, " \t")
-	}
-
-	var imgLink string
-	if imgLinkV, ok := ctx.Options().GetByNameOptional("imageurl"); ok {
-		imgLink = imgLinkV.StringValue()
-	}
-
-	var expires time.Time
-	if expiresV, ok := ctx.Options().GetByNameOptional("timeout"); ok {
-		expiresDuration, err := timeutils.ParseDuration(expiresV.StringValue())
-		if err != nil {
-			return ctx.FollowUpError(
-				"Invalid duration format. Please take a look "+
-					"[here](https://golang.org/pkg/time/#ParseDuration) how to format duration parameter.", "").
-				Send().Error
-		}
-		expires = time.Now().Add(expiresDuration)
-	}
-
-	ivote := vote.Vote{
-		ID:          ctx.GetEvent().ID,
-		CreatorID:   ctx.User().ID,
-		GuildID:     ctx.GetEvent().GuildID,
-		ChannelID:   ctx.GetEvent().ChannelID,
-		Description: body,
-		Choices:     split,
-		ImageURL:    imgLink,
-		Expires:     expires,
-		Buttons:     map[string]vote.ChoiceButton{},
-		CurrentVote: map[string]vote.CurrentVote{},
-	}
-
-	emb, err := ivote.AsEmbed(ctx.GetSession())
-	if err != nil {
-		return err
-	}
-
-	fum := ctx.FollowUpEmbed(emb).Send()
-	err = fum.Error
-	if err != nil {
-		return
-	}
-
-	b := fum.AddComponents()
-
-	ivote.MsgID = fum.Message.ID
-	_, err = ivote.AddButtons(b)
-	if err != nil {
-		return err
-	}
-
-	err = db.AddUpdateVote(ivote)
-	if err != nil {
-		return err
-	}
-
-	vote.VotesRunning[ivote.ID] = ivote
 	return
 }
 
 func (c *Vote) list(ctx ken.SubCommandContext) (err error) {
-	emb := &discordgo.MessageEmbed{
-		Description: "Your open votes on this guild:",
-		Color:       static.ColorDefault,
-		Fields:      make([]*discordgo.MessageEmbedField, 0),
-	}
-	for _, v := range vote.VotesRunning {
-		if v.GuildID == ctx.GetEvent().GuildID && v.CreatorID == ctx.User().ID {
-			emb.Fields = append(emb.Fields, v.AsField())
-		}
-	}
-	if len(emb.Fields) == 0 {
-		emb.Description = "You don't have any open votes on this guild."
-	}
-	err = ctx.FollowUpEmbed(emb).Send().Error
-	return err
+	return
 }
 
 func (c *Vote) expire(ctx ken.SubCommandContext) (err error) {
-	db, _ := ctx.Get(static.DiDatabase).(database.Database)
-
-	expireDuration, err := timeutils.ParseDuration(ctx.Options().GetByName("timeout").StringValue())
-	if err != nil {
-		return ctx.FollowUpError(
-			"Invalid duration format. Please take a look "+
-				"[here](https://golang.org/pkg/time/#ParseDuration) how to format duration parameter.", "").
-			Send().Error
-	}
-
-	id := ctx.Options().Get(0).StringValue()
-	var ivote *vote.Vote
-	for _, v := range vote.VotesRunning {
-		if v.GuildID == ctx.GetEvent().GuildID && v.ID == id {
-			ivote = &v
-		}
-	}
-
-	if err = ivote.SetExpire(ctx.GetSession(), expireDuration); err != nil {
-		return err
-	}
-	if err = db.AddUpdateVote(*ivote); err != nil {
-		return err
-	}
-
-	return ctx.FollowUpEmbed(&discordgo.MessageEmbed{
-		Description: fmt.Sprintf("Vote will expire <t:%d:R>", ivote.Expires.Unix()),
-	}).Send().Error
+	return
 }
 
 func (c *Vote) close(ctx ken.SubCommandContext) (err error) {
-	db := ctx.Get(static.DiDatabase).(database.Database)
-
-	state := vote.StateClosed
-
-	if showChartV, ok := ctx.Options().GetByNameOptional("chart"); ok && !showChartV.BoolValue() {
-		state = vote.StateClosedNC
-	}
-
-	id := ctx.Options().GetByName("id").StringValue()
-
-	if strings.ToLower(id) == "all" {
-		var i int
-		for _, v := range vote.VotesRunning {
-			if v.GuildID == ctx.GetEvent().GuildID && v.CreatorID == ctx.User().ID {
-				go func(vC vote.Vote) {
-					err := db.DeleteVote(vC.ID)
-					if err != nil {
-						return
-					}
-					err = vC.Close(ctx.GetSession(), state)
-					if err != nil {
-						return
-					}
-				}(v)
-				i++
-			}
-		}
-		return ctx.FollowUpEmbed(&discordgo.MessageEmbed{
-			Description: fmt.Sprintf("Closed %d votes.", i),
-		}).Send().Error
-	}
-
-	var ivote *vote.Vote
-	for _, v := range vote.VotesRunning {
-		if v.GuildID == ctx.GetEvent().GuildID && v.ID == id {
-			ivote = &v
-			break
-		}
-	}
-
-	p := ctx.Get(static.DiPermissions).(*permissions.Permissions)
-	ok, override, err := p.HasPerms(ctx.GetSession(), ctx.GetEvent().GuildID, ctx.User().ID, "!"+ctx.GetCommand().(permissions.CommandPerms).Perm()+".close")
-	if err != nil {
-		return err
-	}
-
-	if ivote.CreatorID != ctx.User().ID && !ok && !override {
-		return ctx.FollowUpError(
-			"You do not have the permission to close another ones votes.", "").
-			Send().DeleteAfter(5 * time.Second).Error
-	}
-
-	err = db.DeleteVote(ivote.ID)
-	if err != nil {
-		return err
-	}
-
-	if err = ivote.Close(ctx.GetSession(), state); err != nil {
-		return
-	}
-
-	err = ctx.FollowUpEmbed(&discordgo.MessageEmbed{
-		Description: "Vote closed.",
-	}).Send().DeleteAfter(5 * time.Second).Error
 	return
 }

@@ -1,8 +1,9 @@
 package models
 
 import (
-	"github.com/bwmarrin/discordgo"
 	"time"
+
+	"github.com/bwmarrin/discordgo"
 )
 
 // Vote is a struct for a vote

@@ -8,4 +8,5 @@ const (
 	DiPermissions    = "di-permissions"
 	DiScheduler      = "di-scheduler"
 	DiAutovoice      = "di-autovoice"
+	DiVotes          = "di-votes"
 )

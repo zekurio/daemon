@@ -4,27 +4,32 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/gob"
+	"errors"
 	"fmt"
+	"time"
+
 	"github.com/bwmarrin/discordgo"
+	"github.com/sarulabs/di/v2"
 	"github.com/zekrotja/ken"
 	"github.com/zekurio/daemon/internal/models"
 	"github.com/zekurio/daemon/internal/services/database"
+	"github.com/zekurio/daemon/internal/services/scheduler"
 	"github.com/zekurio/daemon/internal/util/static"
-	"github.com/zekurio/daemon/pkg/timeutils"
-	"time"
 )
 
 type VotesHandler struct {
 	db     database.Database
+	sched  scheduler.Provider
 	votes  map[string]models.Vote         // voteID -> vote
 	fumsgs map[string]ken.FollowUpMessage // voteID -> followUpMessage
 }
 
 var _ VotesProvider = (*VotesHandler)(nil)
 
-func InitVotesHandler(db database.Database) *VotesHandler {
+func InitVotesHandler(ctn di.Container) *VotesHandler {
 	return &VotesHandler{
-		db:     db,
+		db:     ctn.Get(static.DiDatabase).(database.Database),
+		sched:  ctn.Get(static.DiScheduler).(scheduler.Provider),
 		votes:  make(map[string]models.Vote),
 		fumsgs: make(map[string]ken.FollowUpMessage),
 	}
@@ -63,12 +68,7 @@ func Marshal(v models.Vote) (data string, err error) {
 	return
 }
 
-func (v *VotesHandler) CreateVote(ctx ken.SubCommandContext, body string, choices []string, durationString string, imageURL string) (*models.Vote, error) {
-
-	expireTime, err := timeutils.ParseDuration(durationString)
-	if err != nil {
-		return nil, err
-	}
+func (v *VotesHandler) CreateVote(ctx ken.SubCommandContext, body, imageURL string, choices []string, expire time.Time) (*models.Vote, error) {
 
 	ivote := models.Vote{
 		ID:          ctx.GetEvent().ID,
@@ -78,12 +78,12 @@ func (v *VotesHandler) CreateVote(ctx ken.SubCommandContext, body string, choice
 		Description: body,
 		Choices:     choices,
 		ImageURL:    imageURL,
-		Expires:     time.Now().Add(expireTime),
+		Expires:     expire,
 		Buttons:     map[string]models.ChoiceButton{},
 		CurrentVote: map[string]models.CurrentVote{},
 	}
 
-	err = v.db.AddUpdateVote(ivote)
+	err := v.db.AddUpdateVote(ivote)
 	if err != nil {
 		return nil, err
 	}
@@ -94,8 +94,11 @@ func (v *VotesHandler) CreateVote(ctx ken.SubCommandContext, body string, choice
 }
 
 func (v *VotesHandler) GetVote(id string) (*models.Vote, error) {
-	//TODO implement me
-	panic("implement me")
+	if vote, ok := v.votes[id]; ok {
+		return &vote, nil
+	}
+
+	return nil, errors.New("vote not found")
 }
 
 func (v *VotesHandler) GetEmbed(s *discordgo.Session, id string, state ...models.VoteState) (*discordgo.MessageEmbed, error) {
