@@ -2,8 +2,9 @@ package listeners
 
 import (
 	"fmt"
-	"github.com/zekurio/daemon/internal/models"
 	"time"
+
+	"github.com/zekurio/daemon/internal/models"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/charmbracelet/log"
@@ -14,19 +15,19 @@ import (
 	"github.com/zekurio/daemon/pkg/discordutils"
 )
 
-type ListenerGuilds struct {
+type ListenerGuildCreate struct {
 	cfg models.Config
 	db  database.Database
 }
 
-func NewListenerGuilds(ctn di.Container) *ListenerGuilds {
-	return &ListenerGuilds{
+func NewListenerGuildCreate(ctn di.Container) *ListenerGuildCreate {
+	return &ListenerGuildCreate{
 		cfg: ctn.Get(static.DiConfig).(models.Config),
 		db:  ctn.Get(static.DiDatabase).(database.Database),
 	}
 }
 
-func (g *ListenerGuilds) Handler(s *discordgo.Session, e *discordgo.GuildCreate) {
+func (g *ListenerGuildCreate) Handler(s *discordgo.Session, e *discordgo.GuildCreate) {
 	// check if the joinedAt is older than the time
 	if e.JoinedAt.Unix() <= time.Now().Unix() {
 		return

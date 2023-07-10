@@ -17,6 +17,7 @@ import (
 	"github.com/zekurio/daemon/internal/services/config"
 	"github.com/zekurio/daemon/internal/services/database"
 	"github.com/zekurio/daemon/internal/services/permissions"
+	"github.com/zekurio/daemon/internal/services/vote"
 	"github.com/zekurio/daemon/internal/util/embedded"
 	"github.com/zekurio/daemon/internal/util/static"
 )
@@ -134,6 +135,14 @@ func main() {
 			return obj.(*autovoice.AutovoiceHandler).Deconstruct()
 		},
 		*/
+	})
+
+	// Votes
+	err = diBuilder.Add(di.Def{
+		Name: static.DiVotes,
+		Build: func(ctn di.Container) (interface{}, error) {
+			return vote.InitVotesHandler(ctn), nil
+		},
 	})
 
 	// Build dependency injection container

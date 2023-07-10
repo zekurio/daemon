@@ -187,6 +187,40 @@ func (v *Vote) AddButtons(cb *ken.ComponentBuilder) ([]string, error) {
 
 }
 
+// Close closes a vote by editing the message
+func (v *Vote) Close(s *discordgo.Session, voteState ...VoteState) error {
+	currState := StateClosed
+	if len(voteState) > 0 {
+		currState = voteState[0]
+	}
+
+	emb, err := v.AsEmbed(s, currState)
+	if err != nil {
+		return err
+	}
+
+	_, err = s.ChannelMessageEditComplex(&discordgo.MessageEdit{
+		Components: []discordgo.MessageComponent{},
+		Embed:      emb,
+		ID:         v.MsgID,
+		Channel:    v.ChannelID,
+	})
+
+	return err
+}
+
+func (v *Vote) SetExpire(s *discordgo.Session, d time.Duration) error {
+	v.Expires = time.Now().Add(d)
+
+	emb, err := v.AsEmbed(s)
+	if err != nil {
+		return err
+	}
+	_, err = s.ChannelMessageEditEmbed(v.ChannelID, v.MsgID, emb)
+
+	return err
+}
+
 func AddVote(option string, vote *Vote) func(ctx ken.ComponentContext) bool {
 	return func(ctx ken.ComponentContext) bool {
 		ctx.SetEphemeral(true)

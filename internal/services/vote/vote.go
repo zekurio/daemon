@@ -7,6 +7,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/bwmarrin/discordgo"
 	"github.com/sarulabs/di/v2"
 	"github.com/zekrotja/ken"
 	"github.com/zekurio/daemon/internal/models"
@@ -31,6 +32,10 @@ func InitVotesHandler(ctn di.Container) *VotesHandler {
 		votes:  make(map[string]models.Vote),
 		fumsgs: make(map[string]ken.FollowUpMessage),
 	}
+}
+
+func (v *VotesHandler) Deconstruct() {
+	// TODO implement
 }
 
 // Unmarshal decodes a vote from a string
@@ -67,8 +72,7 @@ func Marshal(v models.Vote) (data string, err error) {
 }
 
 func (v *VotesHandler) CreateVote(ctx ken.SubCommandContext, body, imageURL string, options []string, expire time.Time) (*models.Vote, error) {
-
-	ivote := models.Vote{
+	vote := models.Vote{
 		ID:          ctx.GetEvent().ID,
 		CreatorID:   ctx.User().ID,
 		GuildID:     ctx.GetEvent().GuildID,
@@ -81,14 +85,14 @@ func (v *VotesHandler) CreateVote(ctx ken.SubCommandContext, body, imageURL stri
 		CurrentVote: map[string]models.CurrentVote{},
 	}
 
-	err := v.db.AddUpdateVote(ivote)
+	err := v.db.AddUpdateVote(vote)
 	if err != nil {
 		return nil, err
 	}
 
-	v.votes[ivote.ID] = ivote
+	v.votes[vote.ID] = vote
 
-	return &ivote, nil
+	return &vote, nil
 }
 
 func (v *VotesHandler) GetVote(voteID string) (*models.Vote, error) {
@@ -97,4 +101,40 @@ func (v *VotesHandler) GetVote(voteID string) (*models.Vote, error) {
 	}
 
 	return nil, errors.New("vote not found")
+}
+
+func (v *VotesHandler) GetVotes() (map[string]models.Vote, error) {
+	return v.votes, nil
+}
+
+func (v *VotesHandler) DeleteVote(s *discordgo.Session, voteID string, voteState ...models.VoteState) error {
+	vote, err := v.GetVote(voteID)
+	if err != nil {
+		return err
+	}
+
+	currState := models.StateClosed
+	if len(voteState) > 0 {
+		currState = voteState[0]
+	}
+
+	err = vote.Close(s, currState)
+	if err != nil {
+		return err
+	}
+
+	if fumsg, ok := v.fumsgs[voteID]; ok {
+		err = fumsg.UnregisterComponentHandlers()
+		if err != nil {
+			return err
+		}
+	}
+
+	delete(v.votes, voteID)
+
+	return v.db.DeleteVote(voteID)
+}
+
+func (v *VotesHandler) AddFollowUpMessage(voteID string, fumsg ken.FollowUpMessage) {
+	v.fumsgs[voteID] = fumsg
 }

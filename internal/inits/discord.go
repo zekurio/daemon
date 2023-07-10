@@ -27,9 +27,9 @@ func InitDiscord(ctn di.Container) (*discordgo.Session, error) {
 
 	s.AddHandler(listeners.NewListenerReady(ctn).Handler)
 
-	s.AddHandler(listeners.NewListenerMembers(ctn).Handler)
+	s.AddHandler(listeners.NewListenerMemberAdd(ctn).Handler)
 
-	s.AddHandler(listeners.NewListenerGuilds(ctn).Handler)
+	s.AddHandler(listeners.NewListenerGuildCreate(ctn).Handler)
 
 	s.AddHandler(listeners.NewListenerAutovoice(ctn).Handler)
 
