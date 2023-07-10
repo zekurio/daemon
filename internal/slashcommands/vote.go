@@ -47,8 +47,8 @@ func (c *Vote) Options() []*discordgo.ApplicationCommandOption {
 				},
 				{
 					Type:        discordgo.ApplicationCommandOptionString,
-					Name:        "choices",
-					Description: "The choices - split by `,`.",
+					Name:        "options",
+					Description: "The options - split by `,`.",
 					Required:    true,
 				},
 				{

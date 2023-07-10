@@ -66,7 +66,7 @@ func Marshal(v models.Vote) (data string, err error) {
 	return
 }
 
-func (v *VotesHandler) CreateVote(ctx ken.SubCommandContext, body, imageURL string, choices []string, expire time.Time) (*models.Vote, error) {
+func (v *VotesHandler) CreateVote(ctx ken.SubCommandContext, body, imageURL string, options []string, expire time.Time) (*models.Vote, error) {
 
 	ivote := models.Vote{
 		ID:          ctx.GetEvent().ID,
@@ -74,10 +74,10 @@ func (v *VotesHandler) CreateVote(ctx ken.SubCommandContext, body, imageURL stri
 		GuildID:     ctx.GetEvent().GuildID,
 		ChannelID:   ctx.GetEvent().ChannelID,
 		Description: body,
-		Choices:     choices,
+		Options:     options,
 		ImageURL:    imageURL,
 		Expires:     expire,
-		Buttons:     map[string]models.ChoiceButton{},
+		Buttons:     map[string]models.OptionButton{},
 		CurrentVote: map[string]models.CurrentVote{},
 	}
 

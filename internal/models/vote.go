@@ -23,22 +23,22 @@ type Vote struct {
 	Description string
 	ImageURL    string
 	Expires     time.Time
-	Choices     []string
-	Buttons     map[string]ChoiceButton
+	Options     []string
+	Buttons     map[string]OptionButton
 	CurrentVote map[string]CurrentVote
 }
 
-// ChoiceButton is a struct for a choice button that
+// OptionButton is a struct for a option button that
 // is used to vote
-type ChoiceButton struct {
+type OptionButton struct {
 	Button *discordgo.Button
-	Choice string
+	Option string
 }
 
 // CurrentVote is a struct for a current user vote
 type CurrentVote struct {
 	UserID string
-	Choice int // the number of the choice in the vote
+	Option int // the number of the option in the vote
 }
 
 // VoteState is a type for the state of a vote
@@ -81,15 +81,15 @@ func (v *Vote) AsEmbed(s *discordgo.Session, state ...VoteState) (*discordgo.Mes
 
 	totalVotes := map[int]int{}
 	for _, cv := range v.CurrentVote {
-		if _, ok := totalVotes[cv.Choice]; !ok {
-			totalVotes[cv.Choice] = 1
+		if _, ok := totalVotes[cv.Option]; !ok {
+			totalVotes[cv.Option] = 1
 		} else {
-			totalVotes[cv.Choice]++
+			totalVotes[cv.Option]++
 		}
 	}
 
 	description := v.Description + "\n\n"
-	for i, p := range v.Choices {
+	for i, p := range v.Options {
 		description += fmt.Sprintf("**%d. %s** - `%d`\n", i+1, p, totalVotes[i])
 	}
 
@@ -147,47 +147,47 @@ func (v *Vote) AsField() *discordgo.MessageEmbedField {
 
 func (v *Vote) AddButtons(cb *ken.ComponentBuilder) ([]string, error) {
 
-	choiceButtons := map[string]*discordgo.Button{}
-	for _, c := range v.Choices {
-		choiceButtons[c] = &discordgo.Button{
+	optionButtons := map[string]*discordgo.Button{}
+	for _, c := range v.Options {
+		optionButtons[c] = &discordgo.Button{
 			Label:    c,
 			Style:    discordgo.PrimaryButton,
 			CustomID: xid.New().String(),
 		}
 	}
 
-	nCols := len(choiceButtons) / 5
-	if len(choiceButtons)%5 != 0 {
+	nCols := len(optionButtons) / 5
+	if len(optionButtons)%5 != 0 {
 		nCols++
 	}
 
-	choiceButtonColumns := make([][]ChoiceButton, nCols)
-	choiceStrs := make([]string, len(choiceButtons))
+	optionButtonColumns := make([][]OptionButton, nCols)
+	optionStrs := make([]string, len(optionButtons))
 	i := 0
-	for cStr, cBtn := range choiceButtons {
-		choiceButtonColumns[i/5] = append(choiceButtonColumns[i/5], ChoiceButton{
+	for cStr, cBtn := range optionButtons {
+		optionButtonColumns[i/5] = append(optionButtonColumns[i/5], OptionButton{
 			Button: cBtn,
-			Choice: cStr,
+			Option: cStr,
 		})
-		choiceStrs = append(choiceStrs, cStr)
+		optionStrs = append(optionStrs, cStr)
 		i++
 	}
 
-	for _, cBtns := range choiceButtonColumns {
+	for _, cBtns := range optionButtonColumns {
 		cb.AddActionsRow(func(b ken.ComponentAssembler) {
 			for _, cBtn := range cBtns {
-				b.Add(cBtn.Button, AddVote(cBtn.Choice, v))
+				b.Add(cBtn.Button, AddVote(cBtn.Option, v))
 			}
 		})
 	}
 
 	_, err := cb.Build()
 
-	return choiceStrs, err
+	return optionStrs, err
 
 }
 
-func AddVote(choice string, vote *Vote) func(ctx ken.ComponentContext) bool {
+func AddVote(option string, vote *Vote) func(ctx ken.ComponentContext) bool {
 	return func(ctx ken.ComponentContext) bool {
 		ctx.SetEphemeral(true)
 		err := ctx.Defer()
@@ -199,36 +199,36 @@ func AddVote(choice string, vote *Vote) func(ctx ken.ComponentContext) bool {
 		if userID, err = hashutils.HashSnowflake(userID, []byte(vote.ID)); err != nil {
 			return false
 		}
-		newChoice := choice
-		oldChoice := vote.Choices[vote.CurrentVote[userID].Choice]
+		newOption := option
+		oldOption := vote.Options[vote.CurrentVote[userID].Option]
 
 		// check if user has already voted
 		if _, ok := vote.CurrentVote[ctx.User().ID]; ok {
 			// check if user is changing their vote
 			// or removing their vote
-			if newChoice == oldChoice {
+			if newOption == oldOption {
 				delete(vote.CurrentVote, userID)
 				err = ctx.FollowUpEmbed(&discordgo.MessageEmbed{
-					Description: fmt.Sprintf("Your vote for `%s` has been removed", oldChoice),
+					Description: fmt.Sprintf("Your vote for `%s` has been removed", oldOption),
 				}).Send().DeleteAfter(5 * time.Second).Error
 			} else {
 				// change vote
 				vote.CurrentVote[userID] = CurrentVote{
-					Choice: arrayutils.IndexOf(vote.Choices, newChoice),
+					Option: arrayutils.IndexOf(vote.Options, newOption),
 					UserID: userID,
 				}
 				err = ctx.FollowUpEmbed(&discordgo.MessageEmbed{
-					Description: fmt.Sprintf("Your vote has been changed from `%s` to `%s`", oldChoice, newChoice),
+					Description: fmt.Sprintf("Your vote has been changed from `%s` to `%s`", oldOption, newOption),
 				}).Send().DeleteAfter(5 * time.Second).Error
 			}
 		} else {
 			// add vote
 			vote.CurrentVote[userID] = CurrentVote{
-				Choice: arrayutils.IndexOf(vote.Choices, newChoice),
+				Option: arrayutils.IndexOf(vote.Options, newOption),
 				UserID: userID,
 			}
 			err = ctx.FollowUpEmbed(&discordgo.MessageEmbed{
-				Description: fmt.Sprintf("Your vote for `%s` has been added", newChoice),
+				Description: fmt.Sprintf("Your vote for `%s` has been added", newOption),
 			}).Send().DeleteAfter(5 * time.Second).Error
 		}
 
