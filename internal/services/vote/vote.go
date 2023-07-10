@@ -1,9 +1,6 @@
 package vote
 
 import (
-	"bytes"
-	"encoding/base64"
-	"encoding/gob"
 	"errors"
 	"time"
 
@@ -34,41 +31,10 @@ func InitVotesHandler(ctn di.Container) *VotesHandler {
 	}
 }
 
-func (v *VotesHandler) Deconstruct() {
-	// TODO implement
-}
+func (v *VotesHandler) Deconstruct() error {
+	//
 
-// Unmarshal decodes a vote from a string
-func Unmarshal(data string) (v models.Vote, err error) {
-	rawData, err := base64.StdEncoding.DecodeString(data)
-	if err != nil {
-		return
-	}
-
-	buffer := bytes.NewBuffer(rawData)
-	gobdec := gob.NewDecoder(buffer)
-
-	err = gobdec.Decode(&v)
-	if err != nil {
-		return
-	}
-
-	return
-}
-
-// Marshal encodes a vote to a string
-func Marshal(v models.Vote) (data string, err error) {
-	var buffer bytes.Buffer
-	gobenc := gob.NewEncoder(&buffer)
-
-	err = gobenc.Encode(v)
-	if err != nil {
-		return
-	}
-
-	data = base64.StdEncoding.EncodeToString(buffer.Bytes())
-
-	return
+	return nil
 }
 
 func (v *VotesHandler) CreateVote(ctx ken.SubCommandContext, body, imageURL string, options []string, expire time.Time) (*models.Vote, error) {

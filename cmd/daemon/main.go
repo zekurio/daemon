@@ -130,11 +130,9 @@ func main() {
 		Build: func(ctn di.Container) (interface{}, error) {
 			return autovoice.InitAutovoice(ctn), nil
 		},
-		/* TODO implement deconstruct, save data to db
 		Close: func(obj interface{}) error {
 			return obj.(*autovoice.AutovoiceHandler).Deconstruct()
 		},
-		*/
 	})
 
 	// Votes
@@ -142,6 +140,9 @@ func main() {
 		Name: static.DiVotes,
 		Build: func(ctn di.Container) (interface{}, error) {
 			return vote.InitVotesHandler(ctn), nil
+		},
+		Close: func(obj interface{}) error {
+			return obj.(*vote.VotesHandler).Deconstruct()
 		},
 	})
 

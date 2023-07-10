@@ -28,6 +28,10 @@ func InitAutovoice(ctn di.Container) *AutovoiceHandler {
 	}
 }
 
+func (a *AutovoiceHandler) Deconstruct() error {
+	return nil
+}
+
 func (a *AutovoiceHandler) Join(s *discordgo.Session, vs *discordgo.VoiceState) (err error) {
 	avChannels, err := a.db.GetAutoVoice(vs.GuildID)
 	if err != nil || len(avChannels) == 0 {

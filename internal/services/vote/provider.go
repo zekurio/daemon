@@ -19,4 +19,6 @@ type VotesProvider interface {
 	GetVotes() (map[string]models.Vote, error)
 
 	DeleteVote(s *discordgo.Session, voteID string, voteState ...models.VoteState) error
+
+	Deconstruct() error
 }

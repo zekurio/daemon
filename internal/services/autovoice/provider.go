@@ -17,4 +17,7 @@ type AutovoiceProvider interface {
 	// it handles all the logic for deleting a channel
 	// or handling people leaving a created auto voice channel
 	Move(s *discordgo.Session, vsNew, vsOld *discordgo.VoiceState) (err error)
+
+	// Deconstruct saves all the autovoice channels to the database when daemon is shut down.
+	Deconstruct() error
 }
