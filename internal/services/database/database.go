@@ -31,10 +31,13 @@ type Database interface {
 
 	// AutoVoice
 
-	GetGuildMap(guildID string) (models.ChannelMap, error)
-	AddUpdateGuildMap(guildID string, channelMap models.ChannelMap) error
-	GetAllGuildMaps() (map[string]models.ChannelMap, error)
-	DeleteGuildMap(guildID string) error
+	/* this is currently not useful, need a way to keep track of
+	   	the channel map while the bot is shut down1
+		GetGuildMap(guildID string) (models.ChannelMap, error)
+		AddUpdateGuildMap(guildID string, channelMap models.ChannelMap) error
+		GetAllGuildMaps() (map[string]models.ChannelMap, error)
+		DeleteGuildMap(guildID string) error
+	*/
 
 	// Data management
 

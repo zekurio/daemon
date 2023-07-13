@@ -2,6 +2,7 @@
 Token = ''
 OwnerID = ''
 GuildLimit = -1
+DisabledCommands = []
 
 [Postgres]
 Host = 'localhost'
@@ -9,9 +10,6 @@ Port = 0
 Database = ''
 Username = ''
 Password = ''
-
-[APIs]
-OpenAIKey = ''
 
 [Permissions]
 UserRules = ['+dm.chat.*', '+dm.etc.*']

@@ -192,6 +192,7 @@ func (p *Postgres) DeleteVote(voteID string) error {
 }
 
 // AUTOVOICE
+/*
 
 func (p *Postgres) GetGuildMap(guildID string) (models.ChannelMap, error) {
 	var rawData string
@@ -248,6 +249,8 @@ func (p *Postgres) DeleteGuildMap(guildID string) error {
 	_, err := p.db.Exec(`DELETE FROM autovoice WHERE guild_id = $1`, guildID)
 	return err
 }
+
+*/
 
 // DATA MANAGEMENT
 

@@ -18,6 +18,7 @@ type AutovoiceProvider interface {
 	// or handling people leaving a created auto voice channel
 	Move(s *discordgo.Session, vsNew, vsOld *discordgo.VoiceState) (err error)
 
-	// Deconstruct saves all the autovoice channels to the database when daemon is shut down.
+	// Deconstruct is called when the bot is shutting down, it moves all users
+	// from auto voice channels to the parent channel and deletes all auto voice channels
 	Deconstruct() error
 }

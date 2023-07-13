@@ -8,7 +8,6 @@ import (
 	"github.com/sarulabs/di/v2"
 	"github.com/zekurio/daemon/internal/models"
 	"github.com/zekurio/daemon/internal/services/database"
-	"github.com/zekurio/daemon/internal/util/static"
 	"github.com/zekurio/daemon/pkg/arrayutils"
 	"github.com/zekurio/daemon/pkg/discordutils"
 )
@@ -23,7 +22,6 @@ var _ AutovoiceProvider = (*AutovoiceHandler)(nil)
 
 func InitAutovoice(ctn di.Container) *AutovoiceHandler {
 	return &AutovoiceHandler{
-		db:       ctn.Get(static.DiDatabase).(database.Database),
 		channels: make(map[string]models.AVChannel),
 	}
 }
@@ -106,28 +104,28 @@ func (a *AutovoiceHandler) createAVChannel(s *discordgo.Session, guildID, ownerI
 		return
 	}
 
-	ch, err := s.GuildChannelCreate(guildID, channelName(ownerMember, pChannel.Name), discordgo.ChannelTypeGuildVoice)
+	createdCh, err := s.GuildChannelCreate(guildID, channelName(ownerMember, pChannel.Name), discordgo.ChannelTypeGuildVoice)
 	if err != nil {
 		return
 	}
 
-	ch, err = s.ChannelEdit(ch.ID, &discordgo.ChannelEdit{
-		ParentID: pChannel.ID,
+	_, err = s.ChannelEdit(createdCh.ID, &discordgo.ChannelEdit{
+		ParentID: pChannel.ParentID,
 		Position: pChannel.Position + 1,
 	})
 	if err != nil {
 		return
 	}
 
-	a.setAVChannel(ch.ID, models.AVChannel{
+	a.setAVChannel(createdCh.ID, models.AVChannel{
 		GuildID:          guildID,
 		OwnerID:          ownerID,
 		OriginChannelID:  parentID,
-		CreatedChannelID: ch.ID,
+		CreatedChannelID: createdCh.ID,
 		Members:          []string{ownerID},
 	})
 
-	err = s.GuildMemberMove(guildID, ownerID, &ch.ID)
+	err = s.GuildMemberMove(guildID, ownerID, &createdCh.ID)
 
 	return err
 }
